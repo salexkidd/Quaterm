@@ -4,11 +4,20 @@ import KeyboardShortcuts
 import QuatermCore
 import SwiftUI
 
-/// Borderless panel that can take keyboard focus without activating the app,
-/// so the app the user was in stays active underneath.
+/// Borderless panel that can take keyboard focus.
 private final class TerminalPanel: NSPanel {
     override var canBecomeKey: Bool { true }
     override var canBecomeMain: Bool { true }
+}
+
+/// Content view that repaints its background when light / dark mode changes.
+private final class ContentView: NSView {
+    var onAppearanceChange: () -> Void = {}
+
+    override func viewDidChangeEffectiveAppearance() {
+        super.viewDidChangeEffectiveAppearance()
+        onAppearanceChange()
+    }
 }
 
 /// One tab: a Ghostty surface running the user's shell.
@@ -59,8 +68,14 @@ final class TerminalPanelController: NSObject, NSWindowDelegate {
     private(set) var isShown = false
     /// Opens the preferences window; set by the app delegate.
     var onShowPreferences: () -> Void = {}
-    /// The app that was active before an alert activated Quaterm; handed the keyboard back on hide.
-    private var appToRestore: NSRunningApplication?
+    /// The app the user was in most recently, other than Quaterm; gets the keyboard back
+    /// when the panel hides. Updated on every activation so it is never stale.
+    private var lastOtherApp = NSWorkspace.shared.frontmostApplication
+    private var activationObserver: Any?
+    /// Set when show() activates Quaterm: activation finishes later and AppKit then restores the
+    /// app's previous key window (Preferences), so the panel takes the key back at that point.
+    private var takeKeyOnActivation = false
+    private var becomeActiveObserver: Any?
     /// Set while a modal alert owns the keyboard, so losing key status does not hide the panel.
     private var suppressAutoHide = false
 
@@ -73,7 +88,7 @@ final class TerminalPanelController: NSObject, NSWindowDelegate {
         tabBar = NSHostingView(rootView: TabBar(store: store))
         panel = TerminalPanel(
             contentRect: .zero,
-            styleMask: [.borderless, .nonactivatingPanel],
+            styleMask: [.borderless],
             backing: .buffered,
             defer: false
         )
@@ -87,22 +102,53 @@ final class TerminalPanelController: NSObject, NSWindowDelegate {
         panel.collectionBehavior = [.canJoinAllSpaces, .fullScreenAuxiliary]
         // One level whether pinned or not, shared with Preferences: whichever window was brought
         // forward last is on top. Pinning only decides whether a click elsewhere hides the panel.
-        // The level sits below the screen saver.
-        panel.level = .statusBar
-        applyTranslucency()
+        panel.level = Self.shownLevel
+        // The window itself stays clear: the content view paints the background and carries the
+        // fade, which animates reliably where the window's own alpha does not.
+        panel.isOpaque = false
+        panel.backgroundColor = .clear
 
-        let content = NSView()
+        let content = ContentView()
+        content.wantsLayer = true
         tabBar.autoresizingMask = [.width, .minYMargin]
         container.autoresizingMask = [.width, .height]
         content.addSubview(container)
         content.addSubview(tabBar)
         panel.contentView = content
+        applyTranslucency()
         layoutContent(size: .zero)
 
         store.onSelect = { [weak self] in self?.selectTab($0) }
         store.onClose = { [weak self] in self?.closeTabAsked($0) }
         store.onNewTab = { [weak self] in self?.newTab() }
         store.onTogglePin = { [weak self] in self?.togglePin() }
+
+        content.onAppearanceChange = { [weak self] in self?.applyTranslucency() }
+        activationObserver = NSWorkspace.shared.notificationCenter.addObserver(
+            forName: NSWorkspace.didActivateApplicationNotification,
+            object: nil,
+            queue: .main
+        ) { [weak self] note in
+            let app = note.userInfo?[NSWorkspace.applicationUserInfoKey] as? NSRunningApplication
+            MainActor.assumeIsolated {
+                guard let self, let app, app != .current else { return }
+                self.lastOtherApp = app
+            }
+        }
+
+        becomeActiveObserver = NotificationCenter.default.addObserver(
+            forName: NSApplication.didBecomeActiveNotification,
+            object: nil,
+            queue: .main
+        ) { [weak self] _ in
+            MainActor.assumeIsolated {
+                guard let self, self.takeKeyOnActivation else { return }
+                self.takeKeyOnActivation = false
+                guard self.isShown else { return }
+                self.panel.makeKey()
+                self.focusSelectedTerminal()
+            }
+        }
 
         keyMonitor = NSEvent.addLocalMonitorForEvents(matching: .keyDown) { [weak self] event in
             guard let self, event.window === panel else { return event }
@@ -125,13 +171,22 @@ final class TerminalPanelController: NSObject, NSWindowDelegate {
         let fade = settings.fade
         if !panel.isVisible {
             panel.setFrame(WindowGeometry.hiddenFrame(shown: shown, screen: screen.frame, edge: settings.slideEdge), display: false)
-            panel.alphaValue = fade ? 0 : 1
+            panel.contentView?.alphaValue = fade ? 0 : 1
         }
+        // Slide under the menu bar, then rise to the shared level once in place.
+        panel.level = Self.slidingLevel
         layoutContent(size: shown.size)
+        // Quaterm becomes the active app so the menu bar is its own; hide() hands focus back.
+        takeKeyOnActivation = !NSApp.isActive
+        NSApp.activate()
         panel.orderFrontRegardless()
         panel.makeKey()
         focusSelectedTerminal()
-        animate(to: shown, alpha: 1)
+        animate(to: shown, alpha: 1) { [weak self] in
+            // During an alert the level stays lowered; the alert's cleanup raises it.
+            guard let self, isShown, !suppressAutoHide else { return }
+            panel.level = Self.shownLevel
+        }
     }
 
     func hide() {
@@ -139,20 +194,22 @@ final class TerminalPanelController: NSObject, NSWindowDelegate {
         isShown = false
         let screenFrame = (panel.screen ?? NSScreen.screens.first)?.frame ?? panel.frame
         let hidden = WindowGeometry.hiddenFrame(shown: panel.frame, screen: screenFrame, edge: settings.slideEdge)
+        panel.level = Self.slidingLevel
         animate(to: hidden, alpha: settings.fade ? 0 : 1) { [weak self] in
             guard let self, !isShown else { return }
+            // Hand the keyboard back only if the user was in the terminal, not in Preferences.
+            // Checked before ordering out, which would pass the key to an open Preferences window.
+            let stillInTerminal = panel.isKeyWindow
             panel.orderOut(nil)
-            restorePreviousApp()
+            panel.level = Self.shownLevel
+            if stillInTerminal { restorePreviousApp() }
         }
     }
 
-    /// After an alert made Quaterm active, give the keyboard back to the app the user was in,
-    /// unless another Quaterm window (Preferences) is open and should keep it.
+    /// Give the keyboard back to the app the user was in before Quaterm.
     private func restorePreviousApp() {
-        defer { appToRestore = nil }
-        let otherWindowOpen = NSApp.windows.contains { $0 !== panel && $0.isVisible && $0.canBecomeMain }
-        guard NSApp.isActive, !otherWindowOpen else { return }
-        appToRestore?.activate()
+        guard NSApp.isActive else { return }
+        lastOtherApp?.activate()
     }
 
     private func animate(to frame: NSRect, alpha: CGFloat, completion: (@MainActor @Sendable () -> Void)? = nil) {
@@ -160,7 +217,7 @@ final class TerminalPanelController: NSObject, NSWindowDelegate {
             context.duration = settings.animationDuration
             context.timingFunction = CAMediaTimingFunction(name: .easeOut)
             panel.animator().setFrame(frame, display: true)
-            panel.animator().alphaValue = alpha
+            panel.contentView?.animator().alphaValue = alpha
         } completionHandler: {
             MainActor.assumeIsolated { completion?() }
         }
@@ -178,13 +235,13 @@ final class TerminalPanelController: NSObject, NSWindowDelegate {
         raised.forEach { $0.level = .normal }
         // The window that had the keyboard before the alert gets it back (Preferences, or the panel).
         let previousKey = NSApp.keyWindow
-        if !NSApp.isActive {
-            appToRestore = NSWorkspace.shared.frontmostApplication
-        }
         NSApp.activate()
         defer {
             suppressAutoHide = false
-            for (window, level) in savedLevels { window.level = level }
+            for (window, level) in savedLevels where window !== panel { window.level = level }
+            // The panel's level depends on where it is now, not on what it was when the alert opened
+            // (a slide may have finished meanwhile).
+            panel.level = isShown ? Self.shownLevel : Self.slidingLevel
             if let previousKey, previousKey !== panel, previousKey.isVisible {
                 previousKey.makeKeyAndOrderFront(nil)
             } else if isShown {
@@ -215,17 +272,26 @@ final class TerminalPanelController: NSObject, NSWindowDelegate {
 
     /// Ghostty draws the translucent background; the window itself must be see-through for it to show.
     private func applyTranslucency() {
-        let translucent = settings.translucent
-        panel.isOpaque = !translucent
-        panel.backgroundColor = translucent ? .clear : .windowBackgroundColor
+        guard let content = panel.contentView else { return }
+        // cgColor freezes the color for the current appearance, so resolve it under the view's own.
+        content.effectiveAppearance.performAsCurrentDrawingAppearance {
+            content.layer?.backgroundColor = settings.translucent ? .clear : NSColor.windowBackgroundColor.cgColor
+        }
     }
+
+    /// Shared with Preferences while shown; below the screen saver.
+    private static let shownLevel = NSWindow.Level.statusBar
+    /// Below the menu bar, so the slide passes under it instead of covering it.
+    private static let slidingLevel = NSWindow.Level.floating
 
     private static func configuration(_ settings: AppSettings) -> TerminalConfiguration {
         TerminalConfiguration(startingFrom: .default) { builder in
             let entries = GhosttyConfig.entries(
                 scrollbackLines: settings.scrollbackLines,
                 copyOnSelect: settings.copyOnSelect,
-                backgroundOpacity: settings.backgroundOpacity
+                backgroundOpacity: settings.backgroundOpacity,
+                fontFamily: settings.fontFamily,
+                fontSize: settings.fontSize
             )
             for entry in entries {
                 builder.withCustom(entry.key, entry.value)
@@ -236,8 +302,8 @@ final class TerminalPanelController: NSObject, NSWindowDelegate {
     // MARK: Keys
 
     private func handleKey(_ event: NSEvent) -> Bool {
-        // Fixed keys. The main menu has them too, but it does not see keys sent to this
-        // non-activating panel while another app is active.
+        // Fixed keys. The main menu has them too; matching them here first keeps them working
+        // even if a terminal program would otherwise take the key.
         switch KeyboardShortcuts.Shortcut(event: event) {
         case .quit?:
             NSApp.terminate(nil)

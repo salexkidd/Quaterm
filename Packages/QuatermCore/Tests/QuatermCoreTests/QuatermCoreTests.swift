@@ -124,14 +124,23 @@ import Testing
 @Suite struct GhosttyConfigTests {
     @Test func copyOnSelectAndScrollback() {
         let on = Dictionary(
-            GhosttyConfig.entries(scrollbackLines: 1000, copyOnSelect: true, backgroundOpacity: 0.8).filter { $0.key != "keybind" },
+            GhosttyConfig.entries(scrollbackLines: 1000, copyOnSelect: true, backgroundOpacity: 0.8, fontFamily: "", fontSize: 14).filter {
+                $0.key != "keybind"
+            },
             uniquingKeysWith: { a, _ in a }
         )
         #expect(on["copy-on-select"] == "clipboard")
         #expect(on["background-opacity"] == "0.8")
         #expect(on["scrollback-limit-lines"] == "1000")
-        let off = GhosttyConfig.entries(scrollbackLines: 1000, copyOnSelect: false, backgroundOpacity: 1)
+        let off = GhosttyConfig.entries(
+            scrollbackLines: 1000, copyOnSelect: false, backgroundOpacity: 1, fontFamily: "Menlo", fontSize: 100)
         #expect(off.contains { $0 == ("copy-on-select", "none") })
         #expect(off.contains { $0 == ("background-opacity", "1.0") })
+        // A chosen font replaces the default instead of becoming a fallback; size is clamped.
+        #expect(Array(off.prefix(2)).elementsEqual([("font-family", ""), ("font-family", "Menlo")]) { $0 == $1 })
+        #expect(off.contains { $0 == ("font-size", "72.0") })
+        let defaultFont = GhosttyConfig.entries(
+            scrollbackLines: 1000, copyOnSelect: false, backgroundOpacity: 1, fontFamily: "", fontSize: 14)
+        #expect(!defaultFont.contains { $0.key == "font-family" })
     }
 }

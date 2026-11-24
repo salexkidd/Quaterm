@@ -15,6 +15,7 @@ enum Preferences {
         tabs.addTabViewItem(pane("ショートカット", symbol: "keyboard", ShortcutsPane()))
         tabs.addTabViewItem(pane("ウィンドウ", symbol: "macwindow", WindowPane()))
         tabs.addTabViewItem(pane("ディスプレイ", symbol: "display", DisplayPane()))
+        tabs.addTabViewItem(pane("フォント", symbol: "textformat", FontPane()))
         tabs.addTabViewItem(pane("ターミナル", symbol: "terminal", TerminalPane()))
         tabs.addTabViewItem(pane("通知", symbol: "bell", NotificationsPane()))
         tabs.selectedTabViewItemIndex = min(max(lastPane, 0), tabs.tabViewItems.count - 1)
@@ -79,8 +80,6 @@ private struct ShortcutsPane: View {
             KeyboardShortcuts.Recorder("タブを閉じる", name: .closeTab)
             KeyboardShortcuts.Recorder("ウィンドウを伸ばす", name: .growWindow)
             KeyboardShortcuts.Recorder("ウィンドウを縮める", name: .shrinkWindow)
-            KeyboardShortcuts.Recorder("文字を大きくする", name: .increaseFontSize)
-            KeyboardShortcuts.Recorder("文字を小さくする", name: .decreaseFontSize)
             KeyboardShortcuts.Recorder("半透明の切り替え", name: .toggleTranslucent)
         } header: {
             Text("ターミナルが前面にあるとき")
@@ -162,6 +161,40 @@ private struct DisplayPane: View {
         NSScreen.screens.compactMap { screen in
             screen.displayUUID.map { ($0, screen.localizedName) }
         }
+    }
+}
+
+private struct FontPane: View {
+    @AppStorage(SettingsKey.fontFamily) private var fontFamily = ""
+    @AppStorage(SettingsKey.fontSize) private var fontSize = Constants.defaultFontSize
+
+    var body: some View {
+        Section {
+            Picker("フォント", selection: $fontFamily) {
+                Text("既定 (Ghostty 内蔵)").tag("")
+                ForEach(Self.monospacedFamilies, id: \.self) { Text($0).tag($0) }
+                if !fontFamily.isEmpty, !Self.monospacedFamilies.contains(fontFamily) {
+                    Text("\(fontFamily) (見つかりません)").tag(fontFamily)
+                }
+            }
+            Stepper("大きさ: \(fontSize.formatted()) pt", value: $fontSize, in: Constants.fontSizeRange, step: 1)
+        } footer: {
+            Text("文字を大きく・小さくするキーで変えたタブは、そのタブで変えた大きさのままになります。")
+                .font(.caption)
+                .foregroundStyle(.secondary)
+        }
+        Section("ターミナルが前面にあるときのキー") {
+            KeyboardShortcuts.Recorder("文字を大きくする", name: .increaseFontSize)
+            KeyboardShortcuts.Recorder("文字を小さくする", name: .decreaseFontSize)
+        }
+    }
+
+    /// Installed families whose regular face is fixed-pitch, the only ones a terminal grid can use.
+    private static let monospacedFamilies: [String] = NSFontManager.shared.availableFontFamilies.filter { family in
+        guard let name = NSFontManager.shared.availableMembers(ofFontFamily: family)?.first?.first as? String else {
+            return false
+        }
+        return NSFont(name: name, size: 12)?.isFixedPitch ?? false
     }
 }
 

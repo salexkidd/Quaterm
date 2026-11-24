@@ -21,6 +21,10 @@ public enum Constants {
 
     public static let tabBarHeight = 28.0
 
+    /// libghostty-spm's default config uses 14 pt.
+    public static let defaultFontSize = 14.0
+    public static let fontSizeRange = 6.0...72.0
+
     /// Background opacity while "translucent" is on.
     public static let defaultTranslucentOpacity = 0.8
     public static let translucentOpacityRange = 0.2...0.95
@@ -67,6 +71,9 @@ public enum SettingsKey {
     public static let translucent = "translucent"
     public static let translucentOpacity = "translucentOpacity"
     public static let lastPreferencesPane = "lastPreferencesPane"
+    /// Empty means Ghostty's built-in font.
+    public static let fontFamily = "fontFamily"
+    public static let fontSize = "fontSize"
 }
 
 /// Typed view over UserDefaults. Missing values fall back to the defaults in `Constants`.
@@ -90,6 +97,8 @@ public struct AppSettings {
             SettingsKey.confirmCloseLastTab: true,
             SettingsKey.translucent: false,
             SettingsKey.translucentOpacity: Constants.defaultTranslucentOpacity,
+            SettingsKey.fontFamily: "",
+            SettingsKey.fontSize: Constants.defaultFontSize,
         ])
     }
 
@@ -116,6 +125,9 @@ public struct AppSettings {
     public var backgroundOpacity: Double {
         translucent ? clamp(defaults.double(forKey: SettingsKey.translucentOpacity), Constants.translucentOpacityRange) : 1
     }
+
+    public var fontFamily: String { defaults.string(forKey: SettingsKey.fontFamily) ?? "" }
+    public var fontSize: Double { clamp(defaults.double(forKey: SettingsKey.fontSize), Constants.fontSizeRange) }
 
     public var scrollbackLines: Int {
         clamp(defaults.integer(forKey: SettingsKey.scrollbackLines), Constants.scrollbackLinesRange)
