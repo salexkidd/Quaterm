@@ -11,15 +11,21 @@ extension KeyboardShortcuts.Name {
     nonisolated(unsafe) static let closeTab = Self("closeTab", default: .init(.w, modifiers: [.command]))
     nonisolated(unsafe) static let growWindow = Self("growWindow", default: .init(.equal, modifiers: [.command, .option]))
     nonisolated(unsafe) static let shrinkWindow = Self("shrinkWindow", default: .init(.minus, modifiers: [.command, .option]))
+    // On a JIS keyboard "+" shares the key that ANSI calls semicolon.
+    nonisolated(unsafe) static let increaseFontSize = Self("increaseFontSize", default: .init(.semicolon, modifiers: [.command, .shift]))
+    nonisolated(unsafe) static let decreaseFontSize = Self("decreaseFontSize", default: .init(.minus, modifiers: [.command, .shift]))
+    nonisolated(unsafe) static let toggleTranslucent = Self("toggleTranslucent", default: .init(.u, modifiers: [.command]))
 }
 
 extension KeyboardShortcuts.Shortcut {
     nonisolated(unsafe) static let quit = Self(.q, modifiers: [.command])
+    nonisolated(unsafe) static let preferences = Self(.comma, modifiers: [.command])
 }
 
 /// Panel-local actions, in the order the matcher checks them.
 enum LocalAction: CaseIterable {
     case togglePin, newTab, closeTab, growWindow, shrinkWindow
+    case increaseFontSize, decreaseFontSize, toggleTranslucent
 
     var name: KeyboardShortcuts.Name {
         switch self {
@@ -28,6 +34,9 @@ enum LocalAction: CaseIterable {
         case .closeTab: .closeTab
         case .growWindow: .growWindow
         case .shrinkWindow: .shrinkWindow
+        case .increaseFontSize: .increaseFontSize
+        case .decreaseFontSize: .decreaseFontSize
+        case .toggleTranslucent: .toggleTranslucent
         }
     }
 

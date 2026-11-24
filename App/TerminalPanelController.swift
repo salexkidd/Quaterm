@@ -57,6 +57,10 @@ final class TerminalPanelController: NSObject, NSWindowDelegate {
 
     /// True from the moment show starts until hide starts (animations included).
     private(set) var isShown = false
+    /// Opens the preferences window; set by the app delegate.
+    var onShowPreferences: () -> Void = {}
+    /// The app that was active before an alert activated Quaterm; handed the keyboard back on hide.
+    private var appToRestore: NSRunningApplication?
     /// Set while a modal alert owns the keyboard, so losing key status does not hide the panel.
     private var suppressAutoHide = false
 
@@ -82,6 +86,7 @@ final class TerminalPanelController: NSObject, NSWindowDelegate {
         panel.hasShadow = true
         panel.collectionBehavior = [.canJoinAllSpaces, .fullScreenAuxiliary]
         applyPinLevel()
+        applyTranslucency()
 
         let content = NSView()
         tabBar.autoresizingMask = [.width, .minYMargin]
@@ -92,7 +97,7 @@ final class TerminalPanelController: NSObject, NSWindowDelegate {
         layoutContent(size: .zero)
 
         store.onSelect = { [weak self] in self?.selectTab($0) }
-        store.onClose = { [weak self] in self?.closeTab($0) }
+        store.onClose = { [weak self] in self?.closeTabAsked($0) }
         store.onNewTab = { [weak self] in self?.newTab() }
         store.onTogglePin = { [weak self] in self?.togglePin() }
 
@@ -134,7 +139,17 @@ final class TerminalPanelController: NSObject, NSWindowDelegate {
         animate(to: hidden, alpha: settings.fade ? 0 : 1) { [weak self] in
             guard let self, !isShown else { return }
             panel.orderOut(nil)
+            restorePreviousApp()
         }
+    }
+
+    /// After an alert made Quaterm active, give the keyboard back to the app the user was in,
+    /// unless another Quaterm window (Preferences) is open and should keep it.
+    private func restorePreviousApp() {
+        defer { appToRestore = nil }
+        let otherWindowOpen = NSApp.windows.contains { $0 !== panel && $0.isVisible && $0.canBecomeMain }
+        guard NSApp.isActive, !otherWindowOpen else { return }
+        appToRestore?.activate()
     }
 
     private func animate(to frame: NSRect, alpha: CGFloat, completion: (@MainActor @Sendable () -> Void)? = nil) {
@@ -150,13 +165,23 @@ final class TerminalPanelController: NSObject, NSWindowDelegate {
 
     /// Runs a modal step (an alert) without the panel hiding when it loses key status,
     /// then gives the keyboard back to the panel if it is still shown.
+    /// The app is activated so the alert gets the keyboard (the panel never activates it),
+    /// and a pinned panel drops below the alert so it cannot cover it.
     func withAutoHideSuppressed<T>(_ body: () -> T) -> T {
         suppressAutoHide = true
+        panel.level = .floating
+        if !NSApp.isActive {
+            appToRestore = NSWorkspace.shared.frontmostApplication
+        }
+        NSApp.activate()
         defer {
             suppressAutoHide = false
+            applyPinLevel()
             if isShown {
                 panel.makeKey()
                 focusSelectedTerminal()
+            } else {
+                restorePreviousApp()
             }
         }
         return body()
@@ -167,19 +192,32 @@ final class TerminalPanelController: NSObject, NSWindowDelegate {
         hide()
     }
 
-    // MARK: AppSettings
+    // MARK: Settings
 
     func applySettings() {
         ghostty.setTerminalConfiguration(Self.configuration(settings))
+        applyTranslucency()
         guard isShown, let screen = panel.screen ?? resolveScreen() else { return }
         let frame = shownFrame(on: screen)
         layoutContent(size: frame.size)
         panel.setFrame(frame, display: true)
     }
 
+    /// Ghostty draws the translucent background; the window itself must be see-through for it to show.
+    private func applyTranslucency() {
+        let translucent = settings.translucent
+        panel.isOpaque = !translucent
+        panel.backgroundColor = translucent ? .clear : .windowBackgroundColor
+    }
+
     private static func configuration(_ settings: AppSettings) -> TerminalConfiguration {
         TerminalConfiguration(startingFrom: .default) { builder in
-            for entry in GhosttyConfig.entries(scrollbackLines: settings.scrollbackLines, copyOnSelect: settings.copyOnSelect) {
+            let entries = GhosttyConfig.entries(
+                scrollbackLines: settings.scrollbackLines,
+                copyOnSelect: settings.copyOnSelect,
+                translucent: settings.translucent
+            )
+            for entry in entries {
                 builder.withCustom(entry.key, entry.value)
             }
         }
@@ -188,17 +226,28 @@ final class TerminalPanelController: NSObject, NSWindowDelegate {
     // MARK: Keys
 
     private func handleKey(_ event: NSEvent) -> Bool {
-        if KeyboardShortcuts.Shortcut(event: event) == .quit {
+        // Fixed keys. The main menu has them too, but it does not see keys sent to this
+        // non-activating panel while another app is active.
+        switch KeyboardShortcuts.Shortcut(event: event) {
+        case .quit?:
             NSApp.terminate(nil)
             return true
+        case .preferences?:
+            onShowPreferences()
+            return true
+        default:
+            break
         }
         guard let action = LocalAction.matching(event) else { return false }
         switch action {
         case .togglePin: togglePin()
         case .newTab: newTab()
-        case .closeTab: store.selectedID.map(closeTab)
+        case .closeTab: store.selectedID.map(closeTabAsked)
         case .growWindow: resize(steps: 1)
         case .shrinkWindow: resize(steps: -1)
+        case .increaseFontSize: selectedView?.performBindingAction("increase_font_size:1")
+        case .decreaseFontSize: selectedView?.performBindingAction("decrease_font_size:1")
+        case .toggleTranslucent: settings.translucent.toggle()
         }
         return true
     }
@@ -240,6 +289,28 @@ final class TerminalPanelController: NSObject, NSWindowDelegate {
         focusSelectedTerminal()
     }
 
+    /// Closing by the user (Cmd+W, the X button). Asks first when it is the last tab.
+    /// A shell that exits on its own closes its tab through `closeTab` without asking.
+    private func closeTabAsked(_ id: UUID) {
+        if store.tabs.count == 1, settings.confirmCloseLastTab, !confirmCloseLastTab() { return }
+        closeTab(id)
+    }
+
+    private func confirmCloseLastTab() -> Bool {
+        let alert = NSAlert()
+        alert.messageText = Messages.closeLastTabTitle
+        alert.informativeText = Messages.closeLastTabInfo
+        alert.addButton(withTitle: Messages.closeButton)
+        alert.addButton(withTitle: Messages.cancelButton)
+        alert.showsSuppressionButton = true
+        alert.suppressionButton?.title = Messages.dontAskAgain
+        let confirmed = withAutoHideSuppressed { alert.runModal() } == .alertFirstButtonReturn
+        if confirmed, alert.suppressionButton?.state == .on {
+            settings.confirmCloseLastTab = false
+        }
+        return confirmed
+    }
+
     fileprivate func closeTab(_ id: UUID) {
         guard let tab = tabs.removeValue(forKey: id),
             let index = store.tabs.firstIndex(where: { $0.id == id })
@@ -274,8 +345,12 @@ final class TerminalPanelController: NSObject, NSWindowDelegate {
         notifier.post(body: CommandNotification.body(exitCode: exitCode, durationNanos: durationNanos))
     }
 
+    private var selectedView: TerminalView? {
+        store.selectedID.flatMap { tabs[$0]?.view }
+    }
+
     private func focusSelectedTerminal() {
-        guard let id = store.selectedID, let view = tabs[id]?.view else { return }
+        guard let view = selectedView else { return }
         panel.makeFirstResponder(view)
     }
 
@@ -331,7 +406,6 @@ final class TerminalPanelController: NSObject, NSWindowDelegate {
         alert.informativeText = Messages.displayMissingInfo
         alert.addButton(withTitle: Messages.activeDisplay)
         alert.addButton(withTitle: Messages.mainDisplay)
-        NSApp.activate()
         return withAutoHideSuppressed { alert.runModal() } == .alertSecondButtonReturn ? .main : .active
     }
 }

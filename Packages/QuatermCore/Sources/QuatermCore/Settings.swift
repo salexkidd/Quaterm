@@ -20,6 +20,9 @@ public enum Constants {
     public static let notifyMinSecondsRange = 0...3600
 
     public static let tabBarHeight = 28.0
+
+    /// Background opacity while "translucent" is on.
+    public static let translucentOpacity = 0.8
 }
 
 public enum SlideEdge: String, CaseIterable, Sendable {
@@ -59,6 +62,8 @@ public enum SettingsKey {
     public static let notifyMinSeconds = "notifyMinSeconds"
     public static let notifyResult = "notifyResult"
     public static let confirmQuit = "confirmQuit"
+    public static let confirmCloseLastTab = "confirmCloseLastTab"
+    public static let translucent = "translucent"
 }
 
 /// Typed view over UserDefaults. Missing values fall back to the defaults in `Constants`.
@@ -79,6 +84,8 @@ public struct AppSettings {
             SettingsKey.notifyMinSeconds: Constants.defaultNotifyMinSeconds,
             SettingsKey.notifyResult: NotifyResult.always.rawValue,
             SettingsKey.confirmQuit: true,
+            SettingsKey.confirmCloseLastTab: true,
+            SettingsKey.translucent: false,
         ])
     }
 
@@ -89,6 +96,16 @@ public struct AppSettings {
     public var confirmQuit: Bool {
         get { defaults.bool(forKey: SettingsKey.confirmQuit) }
         nonmutating set { defaults.set(newValue, forKey: SettingsKey.confirmQuit) }
+    }
+
+    public var confirmCloseLastTab: Bool {
+        get { defaults.bool(forKey: SettingsKey.confirmCloseLastTab) }
+        nonmutating set { defaults.set(newValue, forKey: SettingsKey.confirmCloseLastTab) }
+    }
+
+    public var translucent: Bool {
+        get { defaults.bool(forKey: SettingsKey.translucent) }
+        nonmutating set { defaults.set(newValue, forKey: SettingsKey.translucent) }
     }
 
     public var scrollbackLines: Int {

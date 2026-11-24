@@ -14,6 +14,11 @@ public enum Messages {
     public static let cancelButton = "キャンセル"
     public static let dontAskAgain = "次回から表示しない"
 
+    // Closing the last tab
+    public static let closeLastTabTitle = "最後のタブを閉じますか？"
+    public static let closeLastTabInfo = "シェルが終了し、ターミナルは隠れます。"
+    public static let closeButton = "閉じる"
+
     // Missing display
     public static let displayMissingTitle = "指定したディスプレイが見つかりません"
     public static let displayMissingInfo = "代わりにどこへ表示しますか？ 選んだ内容は環境設定で変更できます。"

@@ -12,6 +12,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
 
     func applicationDidFinishLaunching(_: Notification) {
         terminal = TerminalPanelController(settings: settings, notifier: Notifier())
+        terminal.onShowPreferences = { [weak self] in self?.showPreferences() }
         applyDockPolicy()
         NSApp.mainMenu = makeMainMenu()
         statusItem = makeStatusItem()
@@ -43,7 +44,6 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         alert.addButton(withTitle: Messages.cancelButton)
         alert.showsSuppressionButton = true
         alert.suppressionButton?.title = Messages.dontAskAgain
-        NSApp.activate()
         let reply = terminal.withAutoHideSuppressed { alert.runModal() }
         guard reply == .alertFirstButtonReturn else { return .terminateCancel }
         if alert.suppressionButton?.state == .on {
@@ -75,6 +75,8 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
     }
 
     @objc private func showPreferences() {
+        // A pinned panel sits above normal windows and would cover Preferences.
+        terminal.hide()
         if preferencesWindow == nil {
             let window = NSWindow(contentViewController: NSHostingController(rootView: PreferencesView()))
             window.title = Messages.preferencesTitle

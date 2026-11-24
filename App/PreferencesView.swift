@@ -6,6 +6,8 @@ import SwiftUI
 struct PreferencesView: View {
     @AppStorage(SettingsKey.showInDock) private var showInDock = true
     @AppStorage(SettingsKey.confirmQuit) private var confirmQuit = true
+    @AppStorage(SettingsKey.confirmCloseLastTab) private var confirmCloseLastTab = true
+    @AppStorage(SettingsKey.translucent) private var translucent = false
     @AppStorage(SettingsKey.slideEdge) private var slideEdge = SlideEdge.top
     @AppStorage(SettingsKey.heightRatio) private var heightRatio = Constants.defaultHeightRatio
     @AppStorage(SettingsKey.animationDuration) private var animationDuration = Constants.defaultAnimationDuration
@@ -24,6 +26,7 @@ struct PreferencesView: View {
             Section("一般") {
                 Toggle("Dock にアイコンを表示する", isOn: $showInDock)
                 Toggle("終了時に確認する", isOn: $confirmQuit)
+                Toggle("最後のタブを閉じるときに確認する", isOn: $confirmCloseLastTab)
             }
 
             Section("キーボードショートカット") {
@@ -33,6 +36,9 @@ struct PreferencesView: View {
                 KeyboardShortcuts.Recorder("タブを閉じる", name: .closeTab)
                 KeyboardShortcuts.Recorder("ウィンドウを伸ばす", name: .growWindow)
                 KeyboardShortcuts.Recorder("ウィンドウを縮める", name: .shrinkWindow)
+                KeyboardShortcuts.Recorder("文字を大きくする", name: .increaseFontSize)
+                KeyboardShortcuts.Recorder("文字を小さくする", name: .decreaseFontSize)
+                KeyboardShortcuts.Recorder("半透明の切り替え", name: .toggleTranslucent)
                 Text("「表示 / 非表示」以外は、ターミナルが前面にあるときだけ効きます。")
                     .font(.caption)
                     .foregroundStyle(.secondary)
@@ -50,6 +56,7 @@ struct PreferencesView: View {
                     Slider(value: $animationDuration, in: Constants.animationDurationRange, step: 0.05)
                 }
                 Toggle("フェードを入れる", isOn: $fade)
+                Toggle("背景を半透明にする", isOn: $translucent)
             }
 
             Section("ディスプレイ") {

@@ -102,6 +102,8 @@ import Testing
         #expect(settings.displayMode == .active)
         #expect(settings.fallbackDisplay == nil)
         #expect(settings.confirmQuit)
+        #expect(settings.confirmCloseLastTab)
+        #expect(!settings.translucent)
 
         settings.heightRatio = 5
         #expect(settings.heightRatio == 1.0)
@@ -117,11 +119,14 @@ import Testing
 @Suite struct GhosttyConfigTests {
     @Test func copyOnSelectAndScrollback() {
         let on = Dictionary(
-            GhosttyConfig.entries(scrollbackLines: 1000, copyOnSelect: true).filter { $0.key != "keybind" }, uniquingKeysWith: { a, _ in a }
+            GhosttyConfig.entries(scrollbackLines: 1000, copyOnSelect: true, translucent: true).filter { $0.key != "keybind" },
+            uniquingKeysWith: { a, _ in a }
         )
         #expect(on["copy-on-select"] == "clipboard")
+        #expect(on["background-opacity"] == "0.8")
         #expect(on["scrollback-limit-lines"] == "1000")
-        let off = GhosttyConfig.entries(scrollbackLines: 1000, copyOnSelect: false)
+        let off = GhosttyConfig.entries(scrollbackLines: 1000, copyOnSelect: false, translucent: false)
         #expect(off.contains { $0 == ("copy-on-select", "none") })
+        #expect(off.contains { $0 == ("background-opacity", "1") })
     }
 }
