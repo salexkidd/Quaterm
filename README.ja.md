@@ -53,23 +53,21 @@ iTerm2 のホットキーウィンドウを、小さくて速いアプリで置�
 - Swift 6.2 を含む Xcode (Xcode 26 以降)。開発は Xcode 27.0 で行った
 - [XcodeGen](https://github.com/yonaskolb/XcodeGen)
 
-## ビルド
+## インストール
 
-配布用のビルド済みアプリはまだ無い。ソースからビルドする。
+配布用のビルド済みアプリは無い。使う Mac ごとに、次のコマンドでビルドとインストールを行う。
 
 ```sh
 brew install xcodegen
 git clone https://github.com/salexkidd/Quaterm.git
 cd Quaterm
-xcodegen generate
-xcodebuild -project Quaterm.xcodeproj -scheme Quaterm -configuration Release \
-  -derivedDataPath build -destination 'platform=macOS' build
-open build/Build/Products/Release/Quaterm.app
+./scripts/install.sh
+open /Applications/Quaterm.app
 ```
 
-インストールするときは、`build/Build/Products/Release/Quaterm.app` を `/Applications` にコピーする。
+`install.sh` は Release 構成でビルドし、`Quaterm.app` を `/Applications` にコピーする (`INSTALL_DIR` を指定すると、コピー先を変えられる)。`xcode-select` が Command Line Tools を指していても、`/Applications` にある Xcode を探して使う。更新するときは `git pull` してからもう一度実行し、Quaterm を再起動する。
 
-アプリはアドホック署名 (開発者証明書を使わない簡易署名) である。初回起動時に通知の許可を求められる。アクセシビリティの権限は不要である。
+アプリはアドホック署名 (開発者証明書を使わない簡易署名) で、Apple の公証は受けていない。自分でビルドしたアプリなら、それで問題なく起動する。macOS が公証を確認するのは、インターネットからダウンロードしたアプリだけだからである。初回起動時に通知の許可を求められる。アクセシビリティの権限は不要である。
 
 ### 補足
 

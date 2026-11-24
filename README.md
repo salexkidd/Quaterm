@@ -53,23 +53,21 @@ Only the show / hide key is registered system-wide, so <kbd>⌘</kbd><kbd>T</kbd
 - Xcode with Swift 6.2 (Xcode 26 or later). Developed with Xcode 27.0
 - [XcodeGen](https://github.com/yonaskolb/XcodeGen)
 
-## Build
+## Install
 
-There is no prebuilt release yet. Build it from source:
+There is no prebuilt release. Build and install it on each Mac with one command:
 
 ```sh
 brew install xcodegen
 git clone https://github.com/salexkidd/Quaterm.git
 cd Quaterm
-xcodegen generate
-xcodebuild -project Quaterm.xcodeproj -scheme Quaterm -configuration Release \
-  -derivedDataPath build -destination 'platform=macOS' build
-open build/Build/Products/Release/Quaterm.app
+./scripts/install.sh
+open /Applications/Quaterm.app
 ```
 
-To install it, copy `build/Build/Products/Release/Quaterm.app` to `/Applications`.
+`install.sh` builds the Release configuration and copies `Quaterm.app` to `/Applications` (set `INSTALL_DIR` to change it). It finds Xcode in `/Applications` even if `xcode-select` points at the Command Line Tools. To update, `git pull` and run it again, then restart Quaterm.
 
-The app is ad-hoc signed. macOS asks for notification permission on first launch; Quaterm does not need Accessibility permission.
+The app is ad-hoc signed and not notarized. That is fine for a copy you build yourself: macOS only checks notarization for apps downloaded from the internet. macOS asks for notification permission on first launch; Quaterm does not need Accessibility permission.
 
 ### Notes
 
