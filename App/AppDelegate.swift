@@ -76,8 +76,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
 
     @objc private func showPreferences() {
         if preferencesWindow == nil {
-            let window = NSWindow(contentViewController: NSHostingController(rootView: PreferencesView()))
-            window.title = Messages.preferencesTitle
+            let window = NSWindow(contentViewController: Preferences.makeController())
             window.styleMask = [.titled, .closable]
             window.isReleasedWhenClosed = false
             // Behaves like an HIG panel: on the pinned terminal's level, so whichever was brought

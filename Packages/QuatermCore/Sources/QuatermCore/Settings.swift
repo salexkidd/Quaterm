@@ -66,6 +66,7 @@ public enum SettingsKey {
     public static let confirmCloseLastTab = "confirmCloseLastTab"
     public static let translucent = "translucent"
     public static let translucentOpacity = "translucentOpacity"
+    public static let lastPreferencesPane = "lastPreferencesPane"
 }
 
 /// Typed view over UserDefaults. Missing values fall back to the defaults in `Constants`.

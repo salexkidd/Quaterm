@@ -30,7 +30,6 @@ public enum Messages {
     public static let menuPreferences = "環境設定…"
     public static let menuQuit = "Quaterm を終了"
     public static let menuEdit = "編集"
-    public static let preferencesTitle = "Quaterm 環境設定"
 
     // Tabs
     public static let newTabTitle = "シェル"
