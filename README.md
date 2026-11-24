@@ -102,6 +102,6 @@ The full specification (in Japanese) is in [docs/spec.md](docs/spec.md).
 
 ## License
 
-MIT
+[MIT](LICENSE)
 
 Quaterm is not affiliated with or endorsed by id Software or the Ghostty project. "Quake" is a trademark of its respective owner and is used here only to describe the style of the window.

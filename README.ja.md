@@ -102,6 +102,6 @@ xcrun swift-format lint -r App Packages/QuatermCore/Sources Packages/QuatermCore
 
 ## ライセンス
 
-MIT
+[MIT](LICENSE)
 
 Quaterm は、id Software および Ghostty プロジェクトとは関係がなく、承認も受けていない。「Quake」はその権利者の商標であり、ここではウィンドウの出方を説明するためだけに使っている。
