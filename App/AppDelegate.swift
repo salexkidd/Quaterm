@@ -75,13 +75,15 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
     }
 
     @objc private func showPreferences() {
-        // A pinned panel sits above normal windows and would cover Preferences.
-        terminal.hide()
         if preferencesWindow == nil {
             let window = NSWindow(contentViewController: NSHostingController(rootView: PreferencesView()))
             window.title = Messages.preferencesTitle
             window.styleMask = [.titled, .closable]
             window.isReleasedWhenClosed = false
+            // Behaves like an HIG panel: on the pinned terminal's level, so whichever was brought
+            // forward last is on top, and hidden while another app is active.
+            window.level = .statusBar
+            window.hidesOnDeactivate = true
             window.center()
             preferencesWindow = window
         }

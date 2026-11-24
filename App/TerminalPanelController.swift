@@ -85,7 +85,10 @@ final class TerminalPanelController: NSObject, NSWindowDelegate {
         panel.isMovable = false
         panel.hasShadow = true
         panel.collectionBehavior = [.canJoinAllSpaces, .fullScreenAuxiliary]
-        applyPinLevel()
+        // One level whether pinned or not, shared with Preferences: whichever window was brought
+        // forward last is on top. Pinning only decides whether a click elsewhere hides the panel.
+        // The level sits below the screen saver.
+        panel.level = .statusBar
         applyTranslucency()
 
         let content = NSView()
@@ -166,18 +169,25 @@ final class TerminalPanelController: NSObject, NSWindowDelegate {
     /// Runs a modal step (an alert) without the panel hiding when it loses key status,
     /// then gives the keyboard back to the panel if it is still shown.
     /// The app is activated so the alert gets the keyboard (the panel never activates it),
-    /// and the panel drops to the normal window level so neither pinned nor unpinned it covers the alert.
+    /// and Quaterm's raised windows (the panel, Preferences) drop to the normal level so none covers the alert.
     func withAutoHideSuppressed<T>(_ body: () -> T) -> T {
         suppressAutoHide = true
-        panel.level = .normal
+        // canBecomeMain leaves out the menu bar icon's window, which must keep its level.
+        let raised = NSApp.windows.filter { $0.canBecomeMain && $0.level > .normal }
+        let savedLevels = raised.map { ($0, $0.level) }
+        raised.forEach { $0.level = .normal }
+        // The window that had the keyboard before the alert gets it back (Preferences, or the panel).
+        let previousKey = NSApp.keyWindow
         if !NSApp.isActive {
             appToRestore = NSWorkspace.shared.frontmostApplication
         }
         NSApp.activate()
         defer {
             suppressAutoHide = false
-            applyPinLevel()
-            if isShown {
+            for (window, level) in savedLevels { window.level = level }
+            if let previousKey, previousKey !== panel, previousKey.isVisible {
+                previousKey.makeKeyAndOrderFront(nil)
+            } else if isShown {
                 panel.makeKey()
                 focusSelectedTerminal()
             } else {
@@ -254,12 +264,6 @@ final class TerminalPanelController: NSObject, NSWindowDelegate {
 
     private func togglePin() {
         store.isPinned.toggle()
-        applyPinLevel()
-    }
-
-    private func applyPinLevel() {
-        // Both levels sit below the screen saver.
-        panel.level = store.isPinned ? .statusBar : .floating
     }
 
     private func resize(steps: Int) {
