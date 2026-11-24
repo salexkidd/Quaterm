@@ -1,0 +1,36 @@
+name: Quaterm
+options:
+  bundleIdPrefix: dev.quaterm
+  deploymentTarget:
+    macOS: "14.0"
+packages:
+  libghostty-spm:
+    url: https://github.com/Lakr233/libghostty-spm.git
+    exactVersion: 2.2.2026112303
+  KeyboardShortcuts:
+    url: https://github.com/sindresorhus/KeyboardShortcuts.git
+    exactVersion: 1.10.0
+  QuatermCore:
+    path: Packages/QuatermCore
+targets:
+  Quaterm:
+    type: application
+    platform: macOS
+    sources: [App]
+    dependencies:
+      - package: libghostty-spm
+        product: GhosttyTerminal
+      - package: KeyboardShortcuts
+      - package: QuatermCore
+    info:
+      path: App/Info.plist
+      properties:
+        CFBundleDisplayName: Quaterm
+        LSApplicationCategoryType: public.app-category.developer-tools
+    settings:
+      base:
+        PRODUCT_BUNDLE_IDENTIFIER: dev.quaterm.Quaterm
+        SWIFT_VERSION: "6.0"
+        CODE_SIGN_STYLE: Manual
+        CODE_SIGN_IDENTITY: "-"
+        ENABLE_HARDENED_RUNTIME: NO
