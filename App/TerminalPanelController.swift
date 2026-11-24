@@ -166,10 +166,10 @@ final class TerminalPanelController: NSObject, NSWindowDelegate {
     /// Runs a modal step (an alert) without the panel hiding when it loses key status,
     /// then gives the keyboard back to the panel if it is still shown.
     /// The app is activated so the alert gets the keyboard (the panel never activates it),
-    /// and a pinned panel drops below the alert so it cannot cover it.
+    /// and the panel drops to the normal window level so neither pinned nor unpinned it covers the alert.
     func withAutoHideSuppressed<T>(_ body: () -> T) -> T {
         suppressAutoHide = true
-        panel.level = .floating
+        panel.level = .normal
         if !NSApp.isActive {
             appToRestore = NSWorkspace.shared.frontmostApplication
         }
@@ -215,7 +215,7 @@ final class TerminalPanelController: NSObject, NSWindowDelegate {
             let entries = GhosttyConfig.entries(
                 scrollbackLines: settings.scrollbackLines,
                 copyOnSelect: settings.copyOnSelect,
-                translucent: settings.translucent
+                backgroundOpacity: settings.backgroundOpacity
             )
             for entry in entries {
                 builder.withCustom(entry.key, entry.value)

@@ -22,7 +22,8 @@ public enum Constants {
     public static let tabBarHeight = 28.0
 
     /// Background opacity while "translucent" is on.
-    public static let translucentOpacity = 0.8
+    public static let defaultTranslucentOpacity = 0.8
+    public static let translucentOpacityRange = 0.2...0.95
 }
 
 public enum SlideEdge: String, CaseIterable, Sendable {
@@ -64,6 +65,7 @@ public enum SettingsKey {
     public static let confirmQuit = "confirmQuit"
     public static let confirmCloseLastTab = "confirmCloseLastTab"
     public static let translucent = "translucent"
+    public static let translucentOpacity = "translucentOpacity"
 }
 
 /// Typed view over UserDefaults. Missing values fall back to the defaults in `Constants`.
@@ -86,6 +88,7 @@ public struct AppSettings {
             SettingsKey.confirmQuit: true,
             SettingsKey.confirmCloseLastTab: true,
             SettingsKey.translucent: false,
+            SettingsKey.translucentOpacity: Constants.defaultTranslucentOpacity,
         ])
     }
 
@@ -106,6 +109,11 @@ public struct AppSettings {
     public var translucent: Bool {
         get { defaults.bool(forKey: SettingsKey.translucent) }
         nonmutating set { defaults.set(newValue, forKey: SettingsKey.translucent) }
+    }
+
+    /// Opacity Ghostty draws the background with: the slider value while translucent, else opaque.
+    public var backgroundOpacity: Double {
+        translucent ? clamp(defaults.double(forKey: SettingsKey.translucentOpacity), Constants.translucentOpacityRange) : 1
     }
 
     public var scrollbackLines: Int {

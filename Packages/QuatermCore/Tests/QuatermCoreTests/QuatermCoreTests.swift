@@ -104,6 +104,11 @@ import Testing
         #expect(settings.confirmQuit)
         #expect(settings.confirmCloseLastTab)
         #expect(!settings.translucent)
+        #expect(settings.backgroundOpacity == 1)
+        settings.translucent = true
+        #expect(settings.backgroundOpacity == Constants.defaultTranslucentOpacity)
+        defaults.set(0.05, forKey: SettingsKey.translucentOpacity)
+        #expect(settings.backgroundOpacity == 0.2)
 
         settings.heightRatio = 5
         #expect(settings.heightRatio == 1.0)
@@ -119,14 +124,14 @@ import Testing
 @Suite struct GhosttyConfigTests {
     @Test func copyOnSelectAndScrollback() {
         let on = Dictionary(
-            GhosttyConfig.entries(scrollbackLines: 1000, copyOnSelect: true, translucent: true).filter { $0.key != "keybind" },
+            GhosttyConfig.entries(scrollbackLines: 1000, copyOnSelect: true, backgroundOpacity: 0.8).filter { $0.key != "keybind" },
             uniquingKeysWith: { a, _ in a }
         )
         #expect(on["copy-on-select"] == "clipboard")
         #expect(on["background-opacity"] == "0.8")
         #expect(on["scrollback-limit-lines"] == "1000")
-        let off = GhosttyConfig.entries(scrollbackLines: 1000, copyOnSelect: false, translucent: false)
+        let off = GhosttyConfig.entries(scrollbackLines: 1000, copyOnSelect: false, backgroundOpacity: 1)
         #expect(off.contains { $0 == ("copy-on-select", "none") })
-        #expect(off.contains { $0 == ("background-opacity", "1") })
+        #expect(off.contains { $0 == ("background-opacity", "1.0") })
     }
 }

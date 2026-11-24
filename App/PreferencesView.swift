@@ -8,6 +8,7 @@ struct PreferencesView: View {
     @AppStorage(SettingsKey.confirmQuit) private var confirmQuit = true
     @AppStorage(SettingsKey.confirmCloseLastTab) private var confirmCloseLastTab = true
     @AppStorage(SettingsKey.translucent) private var translucent = false
+    @AppStorage(SettingsKey.translucentOpacity) private var translucentOpacity = Constants.defaultTranslucentOpacity
     @AppStorage(SettingsKey.slideEdge) private var slideEdge = SlideEdge.top
     @AppStorage(SettingsKey.heightRatio) private var heightRatio = Constants.defaultHeightRatio
     @AppStorage(SettingsKey.animationDuration) private var animationDuration = Constants.defaultAnimationDuration
@@ -57,6 +58,10 @@ struct PreferencesView: View {
                 }
                 Toggle("フェードを入れる", isOn: $fade)
                 Toggle("背景を半透明にする", isOn: $translucent)
+                LabeledContent("半透明時の不透明度: \(Int((translucentOpacity * 100).rounded()))%") {
+                    Slider(value: $translucentOpacity, in: Constants.translucentOpacityRange, step: 0.05)
+                }
+                .disabled(!translucent)
             }
 
             Section("ディスプレイ") {
