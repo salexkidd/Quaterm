@@ -371,7 +371,7 @@ final class TerminalPanelController: NSObject, NSWindowDelegate {
         alert.messageText = Messages.closeLastTabTitle
         alert.informativeText = Messages.closeLastTabInfo
         alert.addButton(withTitle: Messages.closeButton)
-        alert.addButton(withTitle: Messages.cancelButton)
+        alert.addCancelButton()
         alert.showsSuppressionButton = true
         alert.suppressionButton?.title = Messages.dontAskAgain
         let confirmed = withAutoHideSuppressed { alert.runModal() } == .alertFirstButtonReturn
@@ -463,20 +463,41 @@ final class TerminalPanelController: NSObject, NSWindowDelegate {
         }
         var resolution = resolve()
         if resolution == .needsFallbackChoice {
-            settings.fallbackDisplay = askFallbackDisplay()
-            resolution = resolve()
+            // Cancelled: use the active display this time and ask again next time.
+            let choice = askFallbackDisplay()
+            if let choice { settings.fallbackDisplay = choice }
+            resolution = DisplayResolver.resolve(
+                mode: settings.displayMode,
+                specificID: settings.specificDisplayID,
+                fallback: choice ?? .active,
+                displays: displays
+            )
         }
         guard case let .display(id)? = resolution else { return screens.first }
         return screens.first { $0.displayUUID == id } ?? screens.first
     }
 
-    private func askFallbackDisplay() -> FallbackDisplay {
+    /// nil when cancelled.
+    private func askFallbackDisplay() -> FallbackDisplay? {
         let alert = NSAlert()
         alert.messageText = Messages.displayMissingTitle
         alert.informativeText = Messages.displayMissingInfo
         alert.addButton(withTitle: Messages.activeDisplay)
         alert.addButton(withTitle: Messages.mainDisplay)
-        return withAutoHideSuppressed { alert.runModal() } == .alertSecondButtonReturn ? .main : .active
+        alert.addCancelButton()
+        return switch withAutoHideSuppressed({ alert.runModal() }) {
+        case .alertFirstButtonReturn: .active
+        case .alertSecondButtonReturn: .main
+        default: nil
+        }
+    }
+}
+
+extension NSAlert {
+    /// Adds a Cancel button that Esc also presses. AppKit gives Esc only to a button it
+    /// recognizes as "Cancel", which a Japanese title is not.
+    func addCancelButton() {
+        addButton(withTitle: Messages.cancelButton).keyEquivalent = "\u{1b}"
     }
 }
 

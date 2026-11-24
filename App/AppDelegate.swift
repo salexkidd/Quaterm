@@ -41,7 +41,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         alert.messageText = Messages.quitTitle
         alert.informativeText = Messages.quitInfo
         alert.addButton(withTitle: Messages.quitButton)
-        alert.addButton(withTitle: Messages.cancelButton)
+        alert.addCancelButton()
         alert.showsSuppressionButton = true
         alert.suppressionButton?.title = Messages.dontAskAgain
         let reply = terminal.withAutoHideSuppressed { alert.runModal() }

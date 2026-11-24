@@ -21,7 +21,7 @@ public enum Messages {
 
     // Missing display
     public static let displayMissingTitle = "指定したディスプレイが見つかりません"
-    public static let displayMissingInfo = "代わりにどこへ表示しますか？ 選んだ内容は環境設定で変更できます。"
+    public static let displayMissingInfo = "代わりにどこへ表示しますか？ 選んだ内容は環境設定で変更できます。キャンセルすると今回だけアクティブなディスプレイに表示し、次回もう一度たずねます。"
     public static let mainDisplay = "メインディスプレイ"
     public static let activeDisplay = "アクティブなディスプレイ"
 
