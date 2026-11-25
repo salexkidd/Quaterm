@@ -31,14 +31,16 @@
     <rect x="100" y="100" width="824" height="824" fill="#000" filter="url(#grain)"/>
     <!-- prompt: ">" then a q drawn as a crescent pierced by a spike -->
     <g filter="url(#glow)" fill="#ff9a2e">
-      <path d="M190 305 L452 514 L190 723 L190 653 L364 514 L190 375 Z"/>
+      <path d="M222 222 L470 347 L222 472 L222 444 L414 347 L222 250 Z"/>
+      <g transform="translate(670 273) scale(0.718) translate(-670 -429)">
       <rect x="500" y="250" width="340" height="340" mask="url(#crescent)"/>
       <path d="M652 465 L688 465 L688 680 L670 745 L652 680 Z"/>
       <rect x="621" y="465" width="98" height="26"/>
+      </g>
     </g>
     <!-- output lines under the prompt -->
-    <rect x="200" y="770" width="622" height="13" fill="#ff9a2e" opacity="0.35"/>
-    <rect x="200" y="804" width="392" height="13" fill="#ff9a2e" opacity="0.2"/>
+    <rect x="232" y="531" width="560" height="12" fill="#ff9a2e" opacity="0.35"/>
+    <rect x="232" y="556" width="352" height="12" fill="#ff9a2e" opacity="0.2"/>
   </g>
   <rect x="100" y="100" width="824" height="824" rx="185" fill="none" stroke="#000" stroke-opacity="0.5" stroke-width="4"/>
 </svg>
