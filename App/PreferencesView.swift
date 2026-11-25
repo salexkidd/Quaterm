@@ -179,7 +179,7 @@ private struct FontPane: View {
     var body: some View {
         Section {
             Picker("フォント", selection: $fontFamily) {
-                Text("既定 (Ghostty 内蔵)").tag("")
+                Text("既定 (Ghostty の設定に従う)").tag("")
                 ForEach(Self.monospacedFamilies, id: \.self) { Text($0).tag($0) }
                 if !fontFamily.isEmpty, !Self.monospacedFamilies.contains(fontFamily) {
                     Text("\(fontFamily) (見つかりません)").tag(fontFamily)

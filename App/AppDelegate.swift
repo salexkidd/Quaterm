@@ -2,6 +2,7 @@ import AppKit
 import KeyboardShortcuts
 import QuatermCore
 import SwiftUI
+import UniformTypeIdentifiers
 
 @MainActor
 final class AppDelegate: NSObject, NSApplicationDelegate {
@@ -90,6 +91,39 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         preferencesWindow?.makeKeyAndOrderFront(nil)
     }
 
+    /// Opens the Ghostty config file in the default text editor, creating it if there is none.
+    @objc private func openGhosttyConfig() {
+        let files = FileManager.default
+        let candidates = GhosttyUserConfig.candidateURLs(
+            home: files.homeDirectoryForCurrentUser, environment: ProcessInfo.processInfo.environment)
+        let url = GhosttyUserConfig.editableURL(existing: candidates.filter { files.fileExists(atPath: $0.path) }, candidates: candidates)
+        do {
+            if !files.fileExists(atPath: url.path) {
+                try files.createDirectory(at: url.deletingLastPathComponent(), withIntermediateDirectories: true)
+                try Data(Messages.ghosttyConfigTemplate.utf8).write(to: url)
+            }
+        } catch {
+            showOpenGhosttyConfigFailed(error)
+            return
+        }
+        // The file has no extension, so ask for the plain-text editor rather than the file's own app.
+        guard let editor = NSWorkspace.shared.urlForApplication(toOpen: .plainText) else {
+            NSWorkspace.shared.activateFileViewerSelecting([url])
+            return
+        }
+        NSWorkspace.shared.open([url], withApplicationAt: editor, configuration: NSWorkspace.OpenConfiguration()) { _, error in
+            guard let error else { return }
+            DispatchQueue.main.async { self.showOpenGhosttyConfigFailed(error) }
+        }
+    }
+
+    private func showOpenGhosttyConfigFailed(_ error: Error) {
+        let alert = NSAlert()
+        alert.messageText = Messages.ghosttyConfigOpenFailedTitle
+        alert.informativeText = error.localizedDescription
+        terminal.withAutoHideSuppressed { _ = alert.runModal() }
+    }
+
     // MARK: Menus
 
     private func makeStatusItem() -> NSStatusItem {
@@ -98,6 +132,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         let menu = NSMenu()
         menu.addItem(withTitle: Messages.menuToggle, action: #selector(toggleTerminal), keyEquivalent: "").target = self
         menu.addItem(withTitle: Messages.menuPreferences, action: #selector(showPreferences), keyEquivalent: "").target = self
+        menu.addItem(withTitle: Messages.menuOpenGhosttyConfig, action: #selector(openGhosttyConfig), keyEquivalent: "").target = self
         menu.addItem(.separator())
         menu.addItem(withTitle: Messages.menuQuit, action: #selector(NSApplication.terminate(_:)), keyEquivalent: "")
         item.menu = menu
@@ -109,6 +144,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
 
         let appMenu = NSMenu()
         appMenu.addItem(withTitle: Messages.menuPreferences, action: #selector(showPreferences), keyEquivalent: ",").target = self
+        appMenu.addItem(withTitle: Messages.menuOpenGhosttyConfig, action: #selector(openGhosttyConfig), keyEquivalent: "").target = self
         appMenu.addItem(.separator())
         appMenu.addItem(withTitle: Messages.menuQuit, action: #selector(NSApplication.terminate(_:)), keyEquivalent: "q")
         let appItem = NSMenuItem(title: Messages.appName, action: nil, keyEquivalent: "")

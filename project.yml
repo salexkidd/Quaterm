@@ -20,6 +20,8 @@ targets:
     dependencies:
       - package: libghostty-spm
         product: GhosttyTerminal
+      - package: libghostty-spm
+        product: GhosttyTheme
       - package: KeyboardShortcuts
       - package: QuatermCore
     info:

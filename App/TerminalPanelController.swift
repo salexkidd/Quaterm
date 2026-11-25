@@ -1,5 +1,7 @@
 import AppKit
+import GhosttyKit
 import GhosttyTerminal
+import GhosttyTheme
 import KeyboardShortcuts
 import QuatermCore
 import SwiftUI
@@ -84,7 +86,7 @@ final class TerminalPanelController: NSObject, NSWindowDelegate {
     init(settings: AppSettings, notifier: Notifier) {
         self.settings = settings
         self.notifier = notifier
-        ghostty = TerminalController(configuration: Self.configuration(settings))
+        ghostty = TerminalController(configuration: .default, theme: Self.theme(settings, user: []))
         let store = TabStore()
         self.store = store
         tabBar = NSHostingView(rootView: TabBar(store: store))
@@ -119,6 +121,7 @@ final class TerminalPanelController: NSObject, NSWindowDelegate {
         panel.contentView = content
         applyTranslucency()
         layoutContent(size: .zero)
+        applyTerminalConfiguration()
 
         store.onSelect = { [weak self] in self?.selectTab($0) }
         store.onClose = { [weak self] in self?.closeTabAsked($0) }
@@ -202,6 +205,8 @@ final class TerminalPanelController: NSObject, NSWindowDelegate {
     func show() {
         guard let screen = resolveScreen() else { return }
         isShown = true
+        // Picks up edits to the Ghostty config file; a no-op when nothing changed.
+        applyTerminalConfiguration()
         if tabs.isEmpty { newTab() }
 
         let shown = shownFrame(on: screen)
@@ -297,7 +302,7 @@ final class TerminalPanelController: NSObject, NSWindowDelegate {
     // MARK: Settings
 
     func applySettings() {
-        ghostty.setTerminalConfiguration(Self.configuration(settings))
+        applyTerminalConfiguration()
         applyTranslucency()
         guard isShown, let screen = panel.screen ?? resolveScreen() else { return }
         let frame = shownFrame(on: screen)
@@ -319,8 +324,138 @@ final class TerminalPanelController: NSObject, NSWindowDelegate {
     /// Below the menu bar, so the slide passes under it instead of covering it.
     private static let slidingLevel = NSWindow.Level.floating
 
-    private static func configuration(_ settings: AppSettings) -> TerminalConfiguration {
-        TerminalConfiguration(startingFrom: .default) { builder in
+    /// The user config and alert last reported, so each alert shows once per edit.
+    private var reported: (user: GhosttyUserConfig.Loaded, title: String)?
+    /// Lines last screened, and the result, so an unchanged config is not checked again.
+    private var screened: (entries: [GhosttyUserConfig.Entry], kept: [GhosttyUserConfig.Entry], skipped: [String])?
+
+    /// The user's Ghostty config files, then Quaterm's settings on top.
+    private func applyTerminalConfiguration() {
+        let files = FileManager.default
+        let user = GhosttyUserConfig.load(
+            files: GhosttyUserConfig.candidateURLs(
+                home: files.homeDirectoryForCurrentUser, environment: ProcessInfo.processInfo.environment)
+        ) { url in
+            files.fileExists(atPath: url.path) ? try String(contentsOf: url, encoding: .utf8) : nil
+        }
+        var problems = user.problems
+        if problems.isEmpty {
+            if screened?.entries != user.entries {
+                let result = Self.screen(user.entries)
+                screened = (user.entries, result.kept, result.skipped)
+            }
+            let kept = screened?.kept ?? user.entries
+            let skipped = screened?.skipped ?? []
+            let wanted = Self.theme(settings, user: kept)
+            ghostty.setTheme(wanted)
+            if ghostty.theme == wanted {
+                if skipped.isEmpty {
+                    reported = nil
+                } else {
+                    report(user, title: Messages.ghosttyConfigSkippedTitle, info: Messages.ghosttyConfigSkippedInfo(skipped))
+                }
+                return
+            }
+            // Still rejected as a whole, by something no single line shows.
+            problems = [ghostty.lastConfigurationIssue ?? ""]
+        }
+        // Keep running on Quaterm's own settings and say why.
+        ghostty.setTheme(Self.theme(settings, user: []))
+        report(
+            user, title: Messages.ghosttyConfigRejectedTitle,
+            info: Messages.ghosttyConfigRejectedInfo(problems.joined(separator: "\n")))
+    }
+
+    private func report(_ user: GhosttyUserConfig.Loaded, title: String, info: String) {
+        guard reported?.user != user || reported?.title != title else { return }
+        reported = (user, title)
+        // Not from inside show(): the alert must not interrupt the panel half-way through showing.
+        DispatchQueue.main.async { [weak self] in
+            let alert = NSAlert()
+            alert.messageText = title
+            alert.informativeText = info
+            self?.withAutoHideSuppressed { _ = alert.runModal() }
+        }
+    }
+
+    /// libghostty-spm rejects a whole config over one bad line, where Ghostty itself skips the
+    /// line. Lines libghostty does not accept (often keys or actions newer than it) are found
+    /// here by loading the user's lines alone, and left out. `theme` lines are resolved later,
+    /// per appearance, so they are not checked here.
+    private static func screen(_ entries: [GhosttyUserConfig.Entry]) -> (kept: [GhosttyUserConfig.Entry], skipped: [String]) {
+        let checked = entries.indices.filter { entries[$0].key != "theme" }
+        let url = FileManager.default.temporaryDirectory.appending(path: "quaterm-check-\(UUID().uuidString).conf")
+        let text = checked.map { "\(entries[$0].key) = \(entries[$0].value)" }.joined(separator: "\n")
+        guard (try? text.write(to: url, atomically: true, encoding: .utf8)) != nil, let config = ghostty_config_new() else {
+            return (entries, [])
+        }
+        defer {
+            ghostty_config_free(config)
+            try? FileManager.default.removeItem(at: url)
+        }
+        ghostty_config_load_file(config, url.path)
+        let diagnostics = (0..<ghostty_config_diagnostics_count(config)).compactMap { index -> String? in
+            let message: UnsafePointer<CChar>? = ghostty_config_get_diagnostic(config, index).message
+            return message.map { String(cString: $0) }
+        }
+        let bad = Set(
+            GhosttyUserConfig.diagnosedLines(diagnostics, file: url.path)
+                .filter { checked.indices.contains($0 - 1) }
+                .map { checked[$0 - 1] })
+        let kept = entries.indices.filter { !bad.contains($0) }.map { entries[$0] }
+        let skipped = bad.sorted().map { "\(entries[$0].key) = \(entries[$0].value)" }
+        return (kept, skipped)
+    }
+
+    /// Everything goes in the theme, because libghostty writes the theme last: put anywhere else,
+    /// the default colors would override the user's. They stay first instead, and are left out
+    /// when the user picks a `theme`, since Ghostty lets explicit colors win over a theme.
+    private static func theme(_ settings: AppSettings, user: [GhosttyUserConfig.Entry]) -> TerminalTheme {
+        let colors = user.contains { $0.key == "theme" } ? TerminalTheme() : .default
+        return TerminalTheme(
+            light: configuration(settings, user: resolvingThemes(user, dark: false), startingFrom: colors.light),
+            dark: configuration(settings, user: resolvingThemes(user, dark: true), startingFrom: colors.dark)
+        )
+    }
+
+    /// Turns `theme` lines into plain color lines placed first, so the user's own color lines
+    /// still win as they do over a theme in Ghostty, and the last `theme` wins. A theme file (a
+    /// path, or a name in the user's themes folder) is read here, so editing it shows the next
+    /// time the terminal does. A built-in name comes from the package's theme catalog, since
+    /// libghostty-spm ships no folder of built-in themes. An unknown name is left for Ghostty to
+    /// reject, which the caller reports.
+    private static func resolvingThemes(_ user: [GhosttyUserConfig.Entry], dark: Bool) -> [GhosttyUserConfig.Entry] {
+        let themes = GhosttyUserConfig.themesDirectory(
+            home: FileManager.default.homeDirectoryForCurrentUser, environment: ProcessInfo.processInfo.environment)
+        var colors: [GhosttyUserConfig.Entry] = []
+        var rest: [GhosttyUserConfig.Entry] = []
+        for entry in user {
+            guard entry.key == "theme" else {
+                rest.append(entry)
+                continue
+            }
+            let name = GhosttyUserConfig.themeName(entry.value, dark: dark)
+            rest.removeAll { $0.key == "theme" }
+            let file = name.hasPrefix("/") ? URL(fileURLWithPath: name) : themes.appending(path: name)
+            if let contents = try? String(contentsOf: file, encoding: .utf8) {
+                colors = GhosttyUserConfig.entries(contents: contents)
+            } else if let builtIn = GhosttyThemeCatalog.theme(named: name) {
+                colors = GhosttyUserConfig.entries(contents: builtIn.toTerminalConfiguration().rendered)
+            } else {
+                colors = []
+                rest.append(GhosttyUserConfig.Entry(key: "theme", value: name))
+            }
+        }
+        return colors + rest
+    }
+
+    private static func configuration(
+        _ settings: AppSettings, user: [GhosttyUserConfig.Entry], startingFrom colors: TerminalConfiguration
+    ) -> TerminalConfiguration {
+        TerminalConfiguration(startingFrom: colors) { builder in
+            for entry in user {
+                builder.withCustom(entry.key, entry.value)
+            }
             let entries = GhosttyConfig.entries(
                 scrollbackLines: settings.scrollbackLines,
                 copyOnSelect: settings.copyOnSelect,

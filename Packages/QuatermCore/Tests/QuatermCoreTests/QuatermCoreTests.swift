@@ -178,3 +178,128 @@ import Testing
         #expect(TabNavigation.cycledIndex(from: 0, by: 1, count: 0) == nil)
     }
 }
+
+@Suite struct GhosttyUserConfigTests {
+    let home = URL(fileURLWithPath: "/Users/me")
+
+    @Test func candidatesFollowGhosttyOrderAndXDG() {
+        let paths = GhosttyUserConfig.candidateURLs(home: home, environment: [:]).map(\.path)
+        #expect(
+            paths == [
+                "/Users/me/.config/ghostty/config.ghostty",
+                "/Users/me/.config/ghostty/config",
+                "/Users/me/Library/Application Support/com.mitchellh.ghostty/config.ghostty",
+                "/Users/me/Library/Application Support/com.mitchellh.ghostty/config",
+            ])
+        let xdg = GhosttyUserConfig.candidateURLs(home: home, environment: ["XDG_CONFIG_HOME": "/x"])
+        #expect(xdg.first?.path == "/x/ghostty/config.ghostty")
+        let empty = GhosttyUserConfig.candidateURLs(home: home, environment: ["XDG_CONFIG_HOME": ""])
+        #expect(empty.first?.path == "/Users/me/.config/ghostty/config.ghostty")
+    }
+
+    @Test func diagnosedLinesComeFromTheFileOnly() {
+        let lines = GhosttyUserConfig.diagnosedLines(
+            ["/t/a.conf:29:keybind: unknown error", "/t/a.conf:3:font: bad", "/t/b.conf:7:x: y", "no line"],
+            file: "/t/a.conf")
+        #expect(lines == [29, 3])
+    }
+
+    @Test func themeNamePerAppearance() {
+        #expect(GhosttyUserConfig.themeName("Dracula", dark: true) == "Dracula")
+        #expect(GhosttyUserConfig.themeName("\"Catppuccin Mocha\"", dark: false) == "Catppuccin Mocha")
+        #expect(GhosttyUserConfig.themeName("light:Alabaster, dark:Dracula", dark: false) == "Alabaster")
+        #expect(GhosttyUserConfig.themeName("light:Alabaster, dark:Dracula", dark: true) == "Dracula")
+        #expect(
+            GhosttyUserConfig.themesDirectory(home: home, environment: [:]).path == "/Users/me/.config/ghostty/themes")
+    }
+
+    @Test func editableIsLastExistingElsePlainXDG() {
+        let candidates = GhosttyUserConfig.candidateURLs(home: home, environment: [:])
+        #expect(GhosttyUserConfig.editableURL(existing: [], candidates: candidates) == candidates[1])
+        #expect(GhosttyUserConfig.editableURL(existing: [candidates[0], candidates[3]], candidates: candidates) == candidates[3])
+    }
+
+    @Test func parsesEntriesAndSkipsComments() {
+        let contents = """
+            # comment
+            theme = Dracula
+
+              cursor-style=bar
+            keybind = ctrl+a=text:\\x01
+            font-thicken
+            = orphan
+            """
+        let entries = GhosttyUserConfig.entries(contents: contents)
+        #expect(entries.map(\.key) == ["theme", "cursor-style", "keybind", "font-thicken"])
+        #expect(entries.map(\.value) == ["Dracula", "bar", "ctrl+a=text:\\x01", "true"])
+    }
+
+    struct ReadFailed: Error {}
+
+    @Test func includesAreSplicedAfterTheirFile() {
+        let files: [String: String] = [
+            "/c/main": "config-file = dropped\nconfig-file =\nconfig-file = colors\nconfig-file = ?\"../none\"\nfont-size = 13",
+            "/c/colors": "background = 000000",
+        ]
+        let loaded = GhosttyUserConfig.load(files: [URL(fileURLWithPath: "/c/main"), URL(fileURLWithPath: "/c/absent")]) {
+            files[$0.path]
+        }
+        #expect(loaded.problems.isEmpty)
+        #expect(loaded.entries == [.init(key: "font-size", value: "13"), .init(key: "background", value: "000000")])
+    }
+
+    @Test func includesComeAfterEveryListedFile() {
+        let files: [String: String] = [
+            "/a/config": "config-file = inc\nfont-size = 1",
+            "/a/inc": "config-file = deep\nfont-size = 3",
+            "/b/config": "font-size = 2",
+            "/a/deep": "font-size = 4",
+        ]
+        let loaded = GhosttyUserConfig.load(files: [URL(fileURLWithPath: "/a/config"), URL(fileURLWithPath: "/b/config")]) {
+            files[$0.path]
+        }
+        #expect(loaded.entries.map(\.value) == ["1", "2", "3", "4"])
+        // A reset in a later file drops the includes the earlier files queued.
+        var reset = files
+        reset["/b/config"] = "config-file =\nfont-size = 2"
+        let cleared = GhosttyUserConfig.load(files: [URL(fileURLWithPath: "/a/config"), URL(fileURLWithPath: "/b/config")]) {
+            reset[$0.path]
+        }
+        #expect(cleared.entries.map(\.value) == ["1", "2"])
+    }
+
+    @Test func pathValuesBecomeAbsolute() {
+        let loaded = GhosttyUserConfig.load(files: [URL(fileURLWithPath: "/a/config")]) { _ in
+            "custom-shader = shaders/crt.glsl\nbackground-image = ?/img/bg.png\ncursor-style = bar"
+        }
+        #expect(loaded.entries.map(\.value) == ["/a/shaders/crt.glsl", "?/img/bg.png", "bar"])
+    }
+
+    @Test func badFilesAreReported() {
+        let files: [String: String] = [
+            "/c/main": "config-file = missing\nconfig-file = main\nconfig-file = locked"
+        ]
+        // /c/missing is also an optional candidate: being absent there must not hide the include.
+        let candidates = [URL(fileURLWithPath: "/c/missing"), URL(fileURLWithPath: "/c/main")]
+        let loaded = GhosttyUserConfig.load(files: candidates) { url in
+            if url.path == "/c/locked" { throw ReadFailed() }
+            return files[url.path]
+        }
+        #expect(
+            loaded.problems == [
+                Messages.ghosttyConfigMissing("/c/missing"),
+                Messages.ghosttyConfigUnreadable("/c/locked"),
+            ])
+    }
+
+    @Test func includePaths() {
+        let dir = URL(fileURLWithPath: "/Users/me/.config/ghostty")
+        #expect(GhosttyUserConfig.filePath("colors", directory: dir)?.url.path == "/Users/me/.config/ghostty/colors")
+        #expect(GhosttyUserConfig.filePath("colors", directory: dir)?.required == true)
+        let optional = GhosttyUserConfig.filePath("?\"../shared/keys\"", directory: dir)
+        #expect(optional?.url.path == "/Users/me/.config/shared/keys")
+        #expect(optional?.required == false)
+        #expect(GhosttyUserConfig.filePath("/etc/ghostty", directory: dir)?.url.path == "/etc/ghostty")
+        #expect(GhosttyUserConfig.filePath("", directory: dir) == nil)
+    }
+}

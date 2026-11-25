@@ -24,10 +24,11 @@ Quaterm aims to replace iTerm2's hotkey window with something small and fast. Te
 - **Pin**: keep the terminal on top even when you click another window. Unpinned, it hides as soon as you switch to another app (Quaterm's own Preferences window does not count)
 - **Command-finished notifications**: when the terminal is hidden and a command that ran for at least N seconds (default 10) finishes, you get a notification with its exit code and duration. Choose "always" or "failures only"
 - **Display choice**: main display, active display (where the mouse is), or a specific display. If that display is disconnected, Quaterm asks where to show instead and remembers the answer
+- **Ghostty config file**: Quaterm reads the same config files as Ghostty (`~/.config/ghostty/config` and friends, including `config-file` includes), so colors, themes, cursor and the rest work as in Ghostty. Quaterm's own preferences win where they overlap. Open it from the menu with "Ghostty の設定ファイルを開く…"; it is read again each time the terminal shows
 - **Font** family and size, per-tab zoom keys, and a translucent background with an opacity slider
 - Copy on select, configurable scrollback, optional Dock icon, confirmation dialogs (all cancellable with <kbd>Esc</kbd>)
 
-Out of scope on purpose: split panes, resizing by dragging the edge, themes, and profiles.
+Out of scope on purpose: split panes, resizing by dragging the edge, a theme picker, and profiles.
 
 ## Default keys
 
