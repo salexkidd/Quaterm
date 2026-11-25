@@ -39,7 +39,9 @@ rm -rf "$dest/Quaterm.app.new"
 ditto build/Build/Products/Release/Quaterm.app "$dest/Quaterm.app.new"
 rm -rf "$dest/Quaterm.app"
 mv "$dest/Quaterm.app.new" "$dest/Quaterm.app"
-# Refresh the Finder / Dock icon cache for the new copy.
+# Refresh the Finder / Dock icon cache for the new copy. ditto keeps the build's date on the
+# bundle, and macOS keeps showing the old icon unless the date changes.
+touch "$dest/Quaterm.app"
 /System/Library/Frameworks/CoreServices.framework/Frameworks/LaunchServices.framework/Support/lsregister -f "$dest/Quaterm.app"
 
 echo "Installed $dest/Quaterm.app"
