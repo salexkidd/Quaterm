@@ -466,8 +466,16 @@ final class TerminalPanelController: NSObject, NSWindowDelegate {
         guard let content = panel.contentView else { return }
         content.frame = NSRect(origin: .zero, size: size)
         let barHeight = Constants.tabBarHeight
-        container.frame = NSRect(x: 0, y: 0, width: size.width, height: max(0, size.height - barHeight))
-        tabBar.frame = NSRect(x: 0, y: max(0, size.height - barHeight), width: size.width, height: barHeight)
+        let terminalHeight = max(0, size.height - barHeight)
+        // Content coordinates start at the bottom, so a bottom tab bar sits at y = 0.
+        switch settings.tabBarEdge {
+        case .top:
+            container.frame = NSRect(x: 0, y: 0, width: size.width, height: terminalHeight)
+            tabBar.frame = NSRect(x: 0, y: terminalHeight, width: size.width, height: barHeight)
+        case .bottom:
+            container.frame = NSRect(x: 0, y: barHeight, width: size.width, height: terminalHeight)
+            tabBar.frame = NSRect(x: 0, y: 0, width: size.width, height: barHeight)
+        }
     }
 
     private func shownFrame(on screen: NSScreen) -> NSRect {

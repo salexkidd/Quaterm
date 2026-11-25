@@ -93,6 +93,7 @@ private struct ShortcutsPane: View {
 
 private struct WindowPane: View {
     @AppStorage(SettingsKey.slideEdge) private var slideEdge = SlideEdge.top
+    @AppStorage(SettingsKey.tabBarPosition) private var tabBarPosition = TabBarPosition.top
     @AppStorage(SettingsKey.heightRatio) private var heightRatio = Constants.defaultHeightRatio
     @AppStorage(SettingsKey.animationDuration) private var animationDuration = Constants.defaultAnimationDuration
     @AppStorage(SettingsKey.fade) private var fade = false
@@ -104,6 +105,11 @@ private struct WindowPane: View {
             Picker("出てくる方向", selection: $slideEdge) {
                 Text("上から").tag(SlideEdge.top)
                 Text("下から").tag(SlideEdge.bottom)
+            }
+            Picker("タブの位置", selection: $tabBarPosition) {
+                Text("上").tag(TabBarPosition.top)
+                Text("下").tag(TabBarPosition.bottom)
+                Text("出てくる方向に合わせる").tag(TabBarPosition.followSlideEdge)
             }
             LabeledContent("縦幅: \(Int((heightRatio * 100).rounded()))%") {
                 Slider(value: $heightRatio, in: Constants.heightRatioRange, step: Constants.resizeStep)

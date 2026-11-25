@@ -98,6 +98,23 @@ import Testing
 }
 
 @Suite struct AppSettingsTests {
+    @Test func tabBarFollowsSlideEdge() throws {
+        let suite = "QuatermCoreTests.\(UUID().uuidString)"
+        let defaults = try #require(UserDefaults(suiteName: suite))
+        defer { defaults.removePersistentDomain(forName: suite) }
+        let settings = AppSettings(defaults: defaults)
+
+        #expect(settings.tabBarPosition == .top)
+        defaults.set(SlideEdge.bottom.rawValue, forKey: SettingsKey.slideEdge)
+        #expect(settings.tabBarEdge == .top)
+        defaults.set(TabBarPosition.followSlideEdge.rawValue, forKey: SettingsKey.tabBarPosition)
+        #expect(settings.tabBarEdge == .bottom)
+        defaults.set(SlideEdge.top.rawValue, forKey: SettingsKey.slideEdge)
+        #expect(settings.tabBarEdge == .top)
+        defaults.set(TabBarPosition.bottom.rawValue, forKey: SettingsKey.tabBarPosition)
+        #expect(settings.tabBarEdge == .bottom)
+    }
+
     @Test func defaultsAndClamping() throws {
         let suite = "QuatermCoreTests.\(UUID().uuidString)"
         let defaults = try #require(UserDefaults(suiteName: suite))

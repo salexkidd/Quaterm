@@ -35,6 +35,22 @@ public enum SlideEdge: String, CaseIterable, Sendable {
     case bottom
 }
 
+/// Where the tab bar sits inside the window.
+public enum TabBarPosition: String, CaseIterable, Sendable {
+    case top
+    case bottom
+    /// Same side as the window slides from: top for the top edge, bottom for the bottom edge.
+    case followSlideEdge
+
+    public func edge(slidingFrom slideEdge: SlideEdge) -> SlideEdge {
+        switch self {
+        case .top: .top
+        case .bottom: .bottom
+        case .followSlideEdge: slideEdge
+        }
+    }
+}
+
 public enum DisplayMode: String, CaseIterable, Sendable {
     case main
     case active
@@ -57,6 +73,7 @@ public enum SettingsKey {
     public static let showInDock = "showInDock"
     public static let scrollbackLines = "scrollbackLines"
     public static let slideEdge = "slideEdge"
+    public static let tabBarPosition = "tabBarPosition"
     public static let animationDuration = "animationDuration"
     public static let fade = "fade"
     public static let copyOnSelect = "copyOnSelect"
@@ -86,6 +103,7 @@ public struct AppSettings {
             SettingsKey.showInDock: true,
             SettingsKey.scrollbackLines: Constants.defaultScrollbackLines,
             SettingsKey.slideEdge: SlideEdge.top.rawValue,
+            SettingsKey.tabBarPosition: TabBarPosition.top.rawValue,
             SettingsKey.animationDuration: Constants.defaultAnimationDuration,
             SettingsKey.fade: false,
             SettingsKey.copyOnSelect: false,
@@ -147,6 +165,9 @@ public struct AppSettings {
     }
 
     public var slideEdge: SlideEdge { value(SettingsKey.slideEdge) ?? .top }
+    public var tabBarPosition: TabBarPosition { value(SettingsKey.tabBarPosition) ?? .top }
+    /// The window side the tab bar is drawn on, after resolving "follow the slide edge".
+    public var tabBarEdge: SlideEdge { tabBarPosition.edge(slidingFrom: slideEdge) }
     public var displayMode: DisplayMode { value(SettingsKey.displayMode) ?? .active }
     public var notifyResult: NotifyResult { value(SettingsKey.notifyResult) ?? .always }
 
