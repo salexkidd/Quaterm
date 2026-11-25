@@ -1,66 +1,44 @@
 <svg xmlns="http://www.w3.org/2000/svg" width="1024" height="1024" viewBox="0 0 1024 1024">
   <defs>
-    <linearGradient id="plate" x1="0" y1="0" x2="0.3" y2="1">
-      <stop offset="0" stop-color="#7a4a2a"/>
-      <stop offset="0.55" stop-color="#4e2c18"/>
-      <stop offset="1" stop-color="#2a170c"/>
-    </linearGradient>
-    <filter id="grain" x="0" y="0" width="100%" height="100%">
-      <feTurbulence type="fractalNoise" baseFrequency="0.9" numOctaves="3" seed="7"/>
-      <feColorMatrix values="0 0 0 0 0.1  0 0 0 0 0.05  0 0 0 0 0.02  0 0 0 0.55 0"/>
-      <feComposite in2="SourceGraphic" operator="in"/>
-    </filter>
-    <filter id="rust" x="0" y="0" width="100%" height="100%">
-      <feTurbulence type="fractalNoise" baseFrequency="0.012" numOctaves="4" seed="3"/>
-      <feColorMatrix values="0 0 0 0 0.55  0 0 0 0 0.25  0 0 0 0 0.08  0 0 0 1.4 -0.55"/>
-      <feComposite in2="SourceGraphic" operator="in"/>
-    </filter>
     <linearGradient id="panel" x1="0" y1="0" x2="0" y2="1">
       <stop offset="0" stop-color="#0d0a08"/>
       <stop offset="1" stop-color="#1c1410"/>
     </linearGradient>
-    <linearGradient id="edge" x1="0" y1="0" x2="1" y2="0">
-      <stop offset="0" stop-color="#ff7a1a" stop-opacity="0"/>
-      <stop offset="0.5" stop-color="#ffb347"/>
-      <stop offset="1" stop-color="#ff7a1a" stop-opacity="0"/>
-    </linearGradient>
-    <filter id="glow" x="-50%" y="-50%" width="200%" height="200%">
+    <filter id="grain" color-interpolation-filters="sRGB" x="0" y="0" width="100%" height="100%">
+      <feTurbulence type="fractalNoise" baseFrequency="0.9" numOctaves="3" seed="7"/>
+      <feColorMatrix values="0 0 0 0 0.3  0 0 0 0 0.2  0 0 0 0 0.12  0 0 0 0.12 0"/>
+      <feComposite in2="SourceGraphic" operator="in"/>
+    </filter>
+    <filter id="glow" color-interpolation-filters="sRGB" x="-50%" y="-50%" width="200%" height="200%">
       <feGaussianBlur stdDeviation="10" result="b"/>
       <feMerge><feMergeNode in="b"/><feMergeNode in="SourceGraphic"/></feMerge>
     </filter>
-    <filter id="shadow" x="-20%" y="-20%" width="140%" height="140%">
+    <filter id="shadow" color-interpolation-filters="sRGB" x="-20%" y="-20%" width="140%" height="140%">
       <feDropShadow dx="0" dy="12" stdDeviation="14" flood-color="#000" flood-opacity="0.45"/>
     </filter>
-    <radialGradient id="rivet" cx="0.35" cy="0.35" r="0.7">
-      <stop offset="0" stop-color="#d9b48a"/>
-      <stop offset="0.5" stop-color="#7a5232"/>
-      <stop offset="1" stop-color="#2a170c"/>
-    </radialGradient>
+    <!-- Crescent: an inner circle set higher than the outer one cuts the ring open at the top. -->
+    <mask id="crescent" maskUnits="userSpaceOnUse" x="0" y="0" width="1024" height="1024">
+      <circle cx="670" cy="429" r="156" fill="#fff"/>
+      <circle cx="670" cy="394" r="131" fill="#000"/>
+    </mask>
     <clipPath id="body"><rect x="100" y="100" width="824" height="824" rx="185"/></clipPath>
   </defs>
 
-  <g filter="url(#shadow)">
-    <rect x="100" y="100" width="824" height="824" rx="185" fill="url(#plate)"/>
-  </g>
+  <!-- Shadow from a flat shape: a gradient run through the filter renders in bands. -->
+  <rect x="100" y="100" width="824" height="824" rx="185" fill="#000" filter="url(#shadow)"/>
+  <rect x="100" y="100" width="824" height="824" rx="185" fill="url(#panel)"/>
   <g clip-path="url(#body)">
-    <rect x="100" y="100" width="824" height="824" fill="#000" filter="url(#rust)"/>
     <rect x="100" y="100" width="824" height="824" fill="#000" filter="url(#grain)"/>
-    <!-- drop-down console panel -->
-    <rect x="100" y="100" width="824" height="470" fill="url(#panel)"/>
-    <rect x="100" y="562" width="824" height="16" fill="url(#edge)" filter="url(#glow)"/>
-    <!-- prompt -->
+    <!-- prompt: ">" then a q drawn as a crescent pierced by a spike -->
     <g filter="url(#glow)" fill="#ff9a2e">
-      <path d="M232 268 L352 338 L232 408 L232 372 L292 338 L232 304 Z"/>
-      <rect x="392" y="380" width="150" height="34"/>
+      <path d="M190 305 L452 514 L190 723 L190 653 L364 514 L190 375 Z"/>
+      <rect x="500" y="250" width="340" height="340" mask="url(#crescent)"/>
+      <path d="M652 465 L688 465 L688 680 L670 745 L652 680 Z"/>
+      <rect x="621" y="465" width="98" height="26"/>
     </g>
-    <rect x="232" y="460" width="380" height="14" fill="#ff9a2e" opacity="0.35"/>
-    <rect x="232" y="490" width="240" height="14" fill="#ff9a2e" opacity="0.2"/>
-  </g>
-  <!-- rivets -->
-  <g>
-    <circle cx="190" cy="830" r="22" fill="url(#rivet)"/>
-    <circle cx="834" cy="830" r="22" fill="url(#rivet)"/>
-    <circle cx="512" cy="830" r="22" fill="url(#rivet)"/>
+    <!-- output lines under the prompt -->
+    <rect x="200" y="770" width="622" height="13" fill="#ff9a2e" opacity="0.35"/>
+    <rect x="200" y="804" width="392" height="13" fill="#ff9a2e" opacity="0.2"/>
   </g>
   <rect x="100" y="100" width="824" height="824" rx="185" fill="none" stroke="#000" stroke-opacity="0.5" stroke-width="4"/>
 </svg>
