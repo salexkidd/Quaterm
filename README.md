@@ -21,7 +21,7 @@ Quaterm aims to replace iTerm2's hotkey window with something small and fast. Te
 - **Slide from the top or bottom**, with adjustable animation speed and optional fade
 - **Full display width**; height is a percentage of the screen (20–100%, default 40%). Grow / shrink keys change it in 5% steps and the size is remembered
 - **Tabs** with <kbd>⌘</kbd><kbd>T</kbd> / <kbd>⌘</kbd><kbd>W</kbd> and a close button on hover
-- **Pin**: keep the terminal on top even when you click another window. Unpinned, it hides as soon as you click elsewhere
+- **Pin**: keep the terminal on top even when you click another window. Unpinned, it hides as soon as you switch to another app (Quaterm's own Preferences window does not count)
 - **Command-finished notifications**: when the terminal is hidden and a command that ran for at least N seconds (default 10) finishes, you get a notification with its exit code and duration. Choose "always" or "failures only"
 - **Display choice**: main display, active display (where the mouse is), or a specific display. If that display is disconnected, Quaterm asks where to show instead and remembers the answer
 - **Font** family and size, per-tab zoom keys, and a translucent background with an opacity slider

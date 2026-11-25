@@ -76,6 +76,8 @@ final class TerminalPanelController: NSObject, NSWindowDelegate {
     /// app's previous key window (Preferences), so the panel takes the key back at that point.
     private var takeKeyOnActivation = false
     private var becomeActiveObserver: Any?
+    private var resignActiveObserver: Any?
+    private var resignKeyObserver: Any?
     /// Set while a modal alert owns the keyboard, so losing key status does not hide the panel.
     private var suppressAutoHide = false
 
@@ -147,6 +149,41 @@ final class TerminalPanelController: NSObject, NSWindowDelegate {
                 guard self.isShown else { return }
                 self.panel.makeKey()
                 self.focusSelectedTerminal()
+            }
+        }
+
+        // Unpinned, the panel hides when the user moves to another app. Moving to Quaterm's own
+        // Preferences keeps the app active, so it does not hide the panel.
+        resignActiveObserver = NotificationCenter.default.addObserver(
+            forName: NSApplication.didResignActiveNotification,
+            object: nil,
+            queue: .main
+        ) { [weak self] _ in
+            MainActor.assumeIsolated {
+                guard let self, self.isShown, !self.store.isPinned, !self.suppressAutoHide else { return }
+                self.hide()
+            }
+        }
+
+        // Another app's non-activating panel (Raycast, Spotlight) can take the keyboard while Quaterm
+        // stays active. Whichever Quaterm window had it (the panel or Preferences), the panel hides
+        // once no Quaterm window has the key. Checked on the next turn, after the new key is set.
+        resignKeyObserver = NotificationCenter.default.addObserver(
+            forName: NSWindow.didResignKeyNotification,
+            object: nil,
+            queue: .main
+        ) { [weak self] note in
+            let resigned = note.object as? NSWindow
+            DispatchQueue.main.async {
+                guard let self, self.isShown, !self.store.isPinned, !self.suppressAutoHide, NSApp.keyWindow == nil
+                else { return }
+                // Closing Preferences may leave no key window; the terminal takes it back instead of hiding.
+                if let resigned, resigned !== self.panel, !resigned.isVisible, NSApp.isActive {
+                    self.panel.makeKey()
+                    self.focusSelectedTerminal()
+                } else {
+                    self.hide()
+                }
             }
         }
 
@@ -242,7 +279,10 @@ final class TerminalPanelController: NSObject, NSWindowDelegate {
             // The panel's level depends on where it is now, not on what it was when the alert opened
             // (a slide may have finished meanwhile).
             panel.level = isShown ? Self.shownLevel : Self.slidingLevel
-            if let previousKey, previousKey !== panel, previousKey.isVisible {
+            // The user may have switched apps while the alert was open; that deactivation was ignored.
+            if isShown, !store.isPinned, !NSApp.isActive {
+                hide()
+            } else if let previousKey, previousKey !== panel, previousKey.isVisible {
                 previousKey.makeKeyAndOrderFront(nil)
             } else if isShown {
                 panel.makeKey()
@@ -252,11 +292,6 @@ final class TerminalPanelController: NSObject, NSWindowDelegate {
             }
         }
         return body()
-    }
-
-    func windowDidResignKey(_: Notification) {
-        guard isShown, !store.isPinned, !suppressAutoHide else { return }
-        hide()
     }
 
     // MARK: Settings
