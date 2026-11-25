@@ -20,7 +20,7 @@ Quaterm aims to replace iTerm2's hotkey window with something small and fast. Te
 - **Global hotkey** to show / hide the terminal from any app, any Space, even over full-screen apps (default: <kbd>Control</kbd>+<kbd>`</kbd>)
 - **Slide from the top or bottom**, with adjustable animation speed and optional fade
 - **Full display width**; height is a percentage of the screen (20–100%, default 40%). Grow / shrink keys change it in 5% steps and the size is remembered
-- **Tabs** at the top, the bottom, or the same side the window slides from, with <kbd>⌘</kbd><kbd>T</kbd> / <kbd>⌘</kbd><kbd>W</kbd> and a close button on hover
+- **Tabs** at the top, the bottom, or the same side the window slides from, with <kbd>⌘</kbd><kbd>T</kbd> / <kbd>⌘</kbd><kbd>W</kbd>, <kbd>⌘</kbd><kbd>→</kbd> / <kbd>⌘</kbd><kbd>←</kbd> to switch, and a close button on hover
 - **Pin**: keep the terminal on top even when you click another window. Unpinned, it hides as soon as you switch to another app (Quaterm's own Preferences window does not count)
 - **Command-finished notifications**: when the terminal is hidden and a command that ran for at least N seconds (default 10) finishes, you get a notification with its exit code and duration. Choose "always" or "failures only"
 - **Display choice**: main display, active display (where the mouse is), or a specific display. If that display is disconnected, Quaterm asks where to show instead and remembers the answer
@@ -39,6 +39,7 @@ Every key below can be changed in Preferences.
 | Pin / unpin | <kbd>⌘</kbd><kbd>⇧</kbd><kbd>P</kbd> | When the terminal is in front |
 | New tab | <kbd>⌘</kbd><kbd>T</kbd> | When the terminal is in front |
 | Close tab | <kbd>⌘</kbd><kbd>W</kbd> | When the terminal is in front |
+| Next / previous tab | <kbd>⌘</kbd><kbd>→</kbd> / <kbd>⌘</kbd><kbd>←</kbd> | When the terminal is in front |
 | Taller / shorter | <kbd>⌘</kbd><kbd>⌥</kbd><kbd>=</kbd> / <kbd>⌘</kbd><kbd>⌥</kbd><kbd>-</kbd> | When the terminal is in front |
 | Larger / smaller text | <kbd>⌘</kbd><kbd>⇧</kbd><kbd>;</kbd> / <kbd>⌘</kbd><kbd>⇧</kbd><kbd>-</kbd> | When the terminal is in front |
 | Toggle translucency | <kbd>⌘</kbd><kbd>U</kbd> | When the terminal is in front |

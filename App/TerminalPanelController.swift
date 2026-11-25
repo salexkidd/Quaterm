@@ -354,6 +354,8 @@ final class TerminalPanelController: NSObject, NSWindowDelegate {
         case .togglePin: togglePin()
         case .newTab: newTab()
         case .closeTab: store.selectedID.map(closeTabAsked)
+        case .nextTab: cycleTab(by: 1)
+        case .previousTab: cycleTab(by: -1)
         case .growWindow: resize(steps: 1)
         case .shrinkWindow: resize(steps: -1)
         case .increaseFontSize: selectedView?.performBindingAction("increase_font_size:1")
@@ -393,6 +395,13 @@ final class TerminalPanelController: NSObject, NSWindowDelegate {
             container.addSubview(tab.view)
         }
         focusSelectedTerminal()
+    }
+
+    private func cycleTab(by offset: Int) {
+        guard let current = store.tabs.firstIndex(where: { $0.id == store.selectedID }),
+            let index = TabNavigation.cycledIndex(from: current, by: offset, count: store.tabs.count)
+        else { return }
+        selectTab(store.tabs[index].id)
     }
 
     /// Closing by the user (Cmd+W, the X button). Asks first when it is the last tab.

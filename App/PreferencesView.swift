@@ -78,6 +78,8 @@ private struct ShortcutsPane: View {
             KeyboardShortcuts.Recorder("ピン留めの切り替え", name: .togglePin)
             KeyboardShortcuts.Recorder("新しいタブ", name: .newTab)
             KeyboardShortcuts.Recorder("タブを閉じる", name: .closeTab)
+            KeyboardShortcuts.Recorder("次のタブ", name: .nextTab)
+            KeyboardShortcuts.Recorder("前のタブ", name: .previousTab)
             KeyboardShortcuts.Recorder("ウィンドウを伸ばす", name: .growWindow)
             KeyboardShortcuts.Recorder("ウィンドウを縮める", name: .shrinkWindow)
             KeyboardShortcuts.Recorder("半透明の切り替え", name: .toggleTranslucent)

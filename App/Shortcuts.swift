@@ -9,6 +9,8 @@ extension KeyboardShortcuts.Name {
     nonisolated(unsafe) static let togglePin = Self("togglePin", default: .init(.p, modifiers: [.command, .shift]))
     nonisolated(unsafe) static let newTab = Self("newTab", default: .init(.t, modifiers: [.command]))
     nonisolated(unsafe) static let closeTab = Self("closeTab", default: .init(.w, modifiers: [.command]))
+    nonisolated(unsafe) static let nextTab = Self("nextTab", default: .init(.rightArrow, modifiers: [.command]))
+    nonisolated(unsafe) static let previousTab = Self("previousTab", default: .init(.leftArrow, modifiers: [.command]))
     nonisolated(unsafe) static let growWindow = Self("growWindow", default: .init(.equal, modifiers: [.command, .option]))
     nonisolated(unsafe) static let shrinkWindow = Self("shrinkWindow", default: .init(.minus, modifiers: [.command, .option]))
     // On a JIS keyboard "+" shares the key that ANSI calls semicolon.
@@ -24,7 +26,7 @@ extension KeyboardShortcuts.Shortcut {
 
 /// Panel-local actions, in the order the matcher checks them.
 enum LocalAction: CaseIterable {
-    case togglePin, newTab, closeTab, growWindow, shrinkWindow
+    case togglePin, newTab, closeTab, nextTab, previousTab, growWindow, shrinkWindow
     case increaseFontSize, decreaseFontSize, toggleTranslucent
 
     var name: KeyboardShortcuts.Name {
@@ -32,6 +34,8 @@ enum LocalAction: CaseIterable {
         case .togglePin: .togglePin
         case .newTab: .newTab
         case .closeTab: .closeTab
+        case .nextTab: .nextTab
+        case .previousTab: .previousTab
         case .growWindow: .growWindow
         case .shrinkWindow: .shrinkWindow
         case .increaseFontSize: .increaseFontSize

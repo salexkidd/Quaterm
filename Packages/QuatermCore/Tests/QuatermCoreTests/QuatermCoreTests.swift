@@ -168,3 +168,13 @@ import Testing
         #expect(!defaultFont.contains { $0.key == "font-family" })
     }
 }
+
+@Suite struct TabNavigationTests {
+    @Test func nextAndPreviousWrapAround() {
+        #expect(TabNavigation.cycledIndex(from: 0, by: 1, count: 3) == 1)
+        #expect(TabNavigation.cycledIndex(from: 2, by: 1, count: 3) == 0)
+        #expect(TabNavigation.cycledIndex(from: 0, by: -1, count: 3) == 2)
+        #expect(TabNavigation.cycledIndex(from: 0, by: 1, count: 1) == 0)
+        #expect(TabNavigation.cycledIndex(from: 0, by: 1, count: 0) == nil)
+    }
+}
