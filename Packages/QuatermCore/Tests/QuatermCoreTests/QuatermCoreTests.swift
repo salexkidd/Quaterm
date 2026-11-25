@@ -32,6 +32,13 @@ import Testing
         #expect(WindowGeometry.resizedRatio(0.2, steps: -1) == 0.2)
         #expect(WindowGeometry.resizedRatio(1.0, steps: 1) == 1.0)
     }
+
+    @Test func bottomEdgeSwapsGrowAndShrink() {
+        #expect(WindowGeometry.resizeSteps(1, edge: .top) == 1)
+        #expect(WindowGeometry.resizeSteps(-1, edge: .top) == -1)
+        #expect(WindowGeometry.resizeSteps(1, edge: .bottom) == -1)
+        #expect(WindowGeometry.resizeSteps(-1, edge: .bottom) == 1)
+    }
 }
 
 @Suite struct DisplayResolverTests {

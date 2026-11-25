@@ -26,6 +26,15 @@ public enum WindowGeometry {
         return frame
     }
 
+    /// Steps the grow (+1) and shrink (-1) keys apply for `edge`. Sliding from the bottom swaps them,
+    /// so a key keeps moving the free edge the same way on screen whichever edge the window uses.
+    public static func resizeSteps(_ steps: Int, edge: SlideEdge) -> Int {
+        switch edge {
+        case .top: steps
+        case .bottom: -steps
+        }
+    }
+
     /// Height ratio after one press of the grow (+1) or shrink (-1) key.
     public static func resizedRatio(_ ratio: Double, steps: Int) -> Double {
         clamp(ratio + Double(steps) * Constants.resizeStep, Constants.heightRatioRange)

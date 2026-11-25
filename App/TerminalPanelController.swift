@@ -368,6 +368,7 @@ final class TerminalPanelController: NSObject, NSWindowDelegate {
     }
 
     private func resize(steps: Int) {
+        let steps = WindowGeometry.resizeSteps(steps, edge: settings.slideEdge)
         settings.heightRatio = WindowGeometry.resizedRatio(settings.heightRatio, steps: steps)
         // The UserDefaults change notification re-lays out the panel through applySettings().
     }
