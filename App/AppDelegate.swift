@@ -91,6 +91,19 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         preferencesWindow?.makeKeyAndOrderFront(nil)
     }
 
+    @objc private func showAbout() {
+        // The panel is found as the window that is new on screen: keyWindow can still be nil here,
+        // since activate() takes effect later. AppKit reuses the panel, so the level set once stays.
+        let before = Set(NSApp.windows.filter(\.isVisible).map(ObjectIdentifier.init))
+        NSApp.activate()
+        NSApp.orderFrontStandardAboutPanel(nil)
+        // Same level as Preferences, so the pinned terminal does not cover it.
+        for window in NSApp.windows where window.isVisible && !before.contains(ObjectIdentifier(window)) {
+            window.level = .statusBar
+            window.identifier = TerminalPanelController.raisedPanelIdentifier
+        }
+    }
+
     /// Opens the Ghostty config file in the default text editor, creating it if there is none.
     @objc private func openGhosttyConfig() {
         let files = FileManager.default
@@ -130,6 +143,8 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         let item = NSStatusBar.system.statusItem(withLength: NSStatusItem.squareLength)
         item.button?.image = NSImage(systemSymbolName: "terminal", accessibilityDescription: Messages.appName)
         let menu = NSMenu()
+        menu.addItem(withTitle: Messages.menuAbout, action: #selector(showAbout), keyEquivalent: "").target = self
+        menu.addItem(.separator())
         menu.addItem(withTitle: Messages.menuToggle, action: #selector(toggleTerminal), keyEquivalent: "").target = self
         menu.addItem(withTitle: Messages.menuPreferences, action: #selector(showPreferences), keyEquivalent: "").target = self
         menu.addItem(withTitle: Messages.menuOpenGhosttyConfig, action: #selector(openGhosttyConfig), keyEquivalent: "").target = self
@@ -143,6 +158,8 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         let main = NSMenu()
 
         let appMenu = NSMenu()
+        appMenu.addItem(withTitle: Messages.menuAbout, action: #selector(showAbout), keyEquivalent: "").target = self
+        appMenu.addItem(.separator())
         appMenu.addItem(withTitle: Messages.menuPreferences, action: #selector(showPreferences), keyEquivalent: ",").target = self
         appMenu.addItem(withTitle: Messages.menuOpenGhosttyConfig, action: #selector(openGhosttyConfig), keyEquivalent: "").target = self
         appMenu.addItem(.separator())

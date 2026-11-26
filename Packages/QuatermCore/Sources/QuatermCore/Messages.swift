@@ -26,6 +26,7 @@ public enum Messages {
     public static let activeDisplay = "アクティブなディスプレイ"
 
     // Menus
+    public static let menuAbout = "Quaterm について"
     public static let menuToggle = "表示 / 非表示"
     public static let menuPreferences = "環境設定…"
     public static let menuQuit = "Quaterm を終了"

@@ -269,10 +269,16 @@ final class TerminalPanelController: NSObject, NSWindowDelegate {
     /// then gives the keyboard back to the panel if it is still shown.
     /// The app is activated so the alert gets the keyboard (the panel never activates it),
     /// and Quaterm's raised windows (the panel, Preferences) drop to the normal level so none covers the alert.
+    /// Marks a panel that Quaterm raises above normal windows, so alerts lower it like Preferences.
+    static let raisedPanelIdentifier = NSUserInterfaceItemIdentifier("dev.quaterm.raisedPanel")
+
     func withAutoHideSuppressed<T>(_ body: () -> T) -> T {
         suppressAutoHide = true
         // canBecomeMain leaves out the menu bar icon's window, which must keep its level.
-        let raised = NSApp.windows.filter { $0.canBecomeMain && $0.level > .normal }
+        // Raised panels (About) cannot become main, so they carry an identifier instead.
+        let raised = NSApp.windows.filter {
+            ($0.canBecomeMain || $0.identifier == Self.raisedPanelIdentifier) && $0.level > .normal
+        }
         let savedLevels = raised.map { ($0, $0.level) }
         raised.forEach { $0.level = .normal }
         // The window that had the keyboard before the alert gets it back (Preferences, or the panel).
